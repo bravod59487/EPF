@@ -50,12 +50,46 @@
             margin-bottom: 2rem;
         }
 
-        header h1 {
+        .header-inner {
             max-width: 800px;
             margin: 0 auto;
             padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        header h1 {
             font-weight: 500;
             font-size: 1.8rem;
+        }
+
+        .lang-switch select {
+            width: auto;
+            padding: 0.4rem 0.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: var(--border-radius);
+            background-color: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .lang-switch select:hover {
+            background-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .lang-switch select:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+
+        /* Native dropdown lists render on a white surface, so options need dark text */
+        .lang-switch select option {
+            color: var(--text-color);
+            background-color: white;
         }
 
         .card {
@@ -323,8 +357,11 @@
                 padding: 1rem;
             }
 
-            header h1 {
+            .header-inner {
                 padding: 0 1rem;
+            }
+
+            header h1 {
                 font-size: 1.5rem;
             }
 
@@ -352,7 +389,18 @@
     <div id="notification"></div>
 
     <header>
-        <h1>E-paper Photo Frame Settings</h1>
+        <div class="header-inner">
+            <h1 data-i18n="page.title">E-paper Photo Frame Settings</h1>
+            <div class="lang-switch">
+                <select id="langSelect" data-i18n-aria-label="language.label" aria-label="Language"
+                    onchange="setLanguage(this.value)">
+                    <option value="en">English</option>
+                    <option value="zh-Hant">繁體中文</option>
+                    <option value="zh-Hans">简体中文</option>
+                    <option value="ja">日本語</option>
+                </select>
+            </div>
+        </div>
     </header>
 
     <div class="container">
@@ -364,8 +412,11 @@
 
         <div class="card">
             <div class="battery-info">
-                <h2 class="battery-title">Battery Consumption</h2>
-                <p class="battery-charge">Charge Level: {{ "%.1f"|format(battery_percentage) }}%</p>
+                <h2 class="battery-title" data-i18n="battery.title">Battery Consumption</h2>
+                <p class="battery-charge">
+                    <span data-i18n="battery.charge">Charge Level:</span>
+                    <span id="batteryPercent">{{ "%.1f"|format(battery_percentage) }}%</span>
+                </p>
                 <div class="battery-bar">
                     <div id="batteryLevel" class="battery-level" style="width: {{ battery_percentage }}%"></div>
                 </div>
@@ -374,62 +425,61 @@
 
         <form id="settingsForm" method="POST" onsubmit="handleSubmit(event)">
             <div class="card">
-                <h2 class="card-title">Server Connection</h2>
+                <h2 class="card-title" data-i18n="card.server">Server Connection</h2>
                 <div class="form-group">
-                    <label for="url">Immich Server URL:</label>
+                    <label for="url" data-i18n="label.url">Immich Server URL:</label>
                     <input type="text" id="url" name="url" value="{{ config['immich']['url'] }}"
                         placeholder="http://localhost" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="album">Album Name:</label>
+                    <label for="album" data-i18n="label.album">Album Name:</label>
                     <input type="text" id="album" name="album" value="{{ config['immich']['album'] }}"
                         placeholder="default_album" required>
                 </div>
             </div>
 
             <div class="card">
-                <h2 class="card-title">Display Settings</h2>
+                <h2 class="card-title" data-i18n="card.display">Display Settings</h2>
                 <div class="form-group">
-                    <label for="rotation">Image Rotation:</label>
+                    <label for="rotation" data-i18n="label.rotation">Image Rotation:</label>
                     <select id="rotation" name="rotation">
-                        <option value="0" {% if config['immich']['rotation']==0 %}selected{% endif %}>0 degrees</option>
-                        <option value="90" {% if config['immich']['rotation']==90 %}selected{% endif %}>90 degrees
-                        </option>
-                        <option value="180" {% if config['immich']['rotation']==180 %}selected{% endif %}>180 degrees
-                        </option>
-                        <option value="270" {% if config['immich']['rotation']==270 %}selected{% endif %}>270 degrees
-                        </option>
+                        <option value="0" data-i18n="rotation.0" {% if config['immich']['rotation']==0 %}selected{% endif
+                            %}>0 degrees</option>
+                        <option value="90" data-i18n="rotation.90" {% if config['immich']['rotation']==90 %}selected{%
+                            endif %}>90 degrees</option>
+                        <option value="180" data-i18n="rotation.180" {% if config['immich']['rotation']==180 %}selected{%
+                            endif %}>180 degrees</option>
+                        <option value="270" data-i18n="rotation.270" {% if config['immich']['rotation']==270 %}selected{%
+                            endif %}>270 degrees</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="display_mode">Display Mode:</label>
+                    <label for="display_mode" data-i18n="label.displayMode">Display Mode:</label>
                     <select id="display_mode" name="display_mode">
-                        <option value="fit" {% if config['immich']['display_mode']=='fit' %}selected{% endif %}>Fit
-                            Width
-                        </option>
-                        <option value="fill" {% if config['immich']['display_mode']=='fill' %}selected{% endif %}>Fill
-                            Screen
-                        </option>
+                        <option value="fit" data-i18n="mode.fit" {% if config['immich']['display_mode']=='fit'
+                            %}selected{% endif %}>Fit Width</option>
+                        <option value="fill" data-i18n="mode.fill" {% if config['immich']['display_mode']=='fill'
+                            %}selected{% endif %}>Fill Screen</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="image_order">Image Display Order:</label>
+                    <label for="image_order" data-i18n="label.imageOrder">Image Display Order:</label>
                     <select id="image_order" name="image_order">
-                        <option value="random" {% if config['immich']['image_order']=='random' %}selected{% endif %}>
-                            Random</option>
-                        <option value="newest" {% if config['immich']['image_order']=='newest' %}selected{% endif %}>
-                            Newest First</option>
+                        <option value="random" data-i18n="order.random" {% if config['immich']['image_order']=='random'
+                            %}selected{% endif %}>Random</option>
+                        <option value="newest" data-i18n="order.newest" {% if config['immich']['image_order']=='newest'
+                            %}selected{% endif %}>Newest First</option>
                     </select>
                 </div>
             </div>
 
             <div class="card">
-                <h2 class="card-title">Image Enhancement</h2>
+                <h2 class="card-title" data-i18n="card.enhance">Image Enhancement</h2>
                 <div class="form-group">
-                    <label for="enhanced">Color Enhancement:</label>
+                    <label for="enhanced" data-i18n="label.enhanced">Color Enhancement:</label>
                     <div class="slider-container">
                         <input type="range" id="enhanced" name="enhanced" min="0.0" max="2.0" step="0.1"
                             value="{{ config['immich']['enhanced']|default('1.0') }}" oninput="updateSliderValue(this)">
@@ -438,7 +488,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="contrast">Contrast:</label>
+                    <label for="contrast" data-i18n="label.contrast">Contrast:</label>
                     <div class="slider-container">
                         <input type="range" id="contrast" name="contrast" min="0.0" max="2.0" step="0.1"
                             value="{{ config['immich']['contrast']|default('1.0') }}" oninput="updateSliderValue(this)">
@@ -447,7 +497,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="strength">Dithering Strength:</label>
+                    <label for="strength" data-i18n="label.strength">Dithering Strength:</label>
                     <div class="slider-container">
                         <input type="range" id="strength" name="strength" min="0.0" max="1.0" step="0.1"
                             value="{{ config['immich']['strength']|default('0.8') }}" oninput="updateSliderValue(this)">
@@ -457,9 +507,9 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title">Power Management</h2>
+                <h2 class="card-title" data-i18n="card.power">Power Management</h2>
                 <div class="form-group">
-                    <label for="sleep_time">Sleep Time Range:</label>
+                    <label for="sleep_start_hour" data-i18n="label.sleepRange">Sleep Time Range:</label>
                     <div class="time-input">
                         <select id="sleep_start_hour" name="sleep_start_hour">
                             {% for hour in range(24) %}
@@ -478,7 +528,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <span style="margin: 0 10px;">to</span>
+                        <span style="margin: 0 10px;" data-i18n="time.to">to</span>
                         <select id="sleep_end_hour" name="sleep_end_hour">
                             {% for hour in range(24) %}
                             <option value="{{ hour }}" {% if config['immich']['sleep_end_hour']==hour %}selected{% endif
@@ -497,58 +547,335 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="small-text">Device will not wake up during this time period</div>
+                    <div class="small-text" data-i18n="hint.sleep">Device will not wake up during this time period</div>
                 </div>
 
                 <div class="form-group">
-                    <label for="wakeup_interval">Wake Up Interval (Outside Sleep Time):</label>
+                    <label for="wakeup_interval" data-i18n="label.wakeup">Wake Up Interval (Outside Sleep Time):</label>
                     <select id="wakeup_interval" name="wakeup_interval">
-                        <option value="30" {% if config['immich']['wakeup_interval']==30 %}selected{% endif %}>30
-                            minutes
-                        </option>
-                        <option value="60" {% if config['immich']['wakeup_interval']==60 %}selected{% endif %}>1 hour
-                        </option>
-                        <option value="120" {% if config['immich']['wakeup_interval']==120 %}selected{% endif %}>2 hours
-                        </option>
-                        <option value="180" {% if config['immich']['wakeup_interval']==180 %}selected{% endif %}>3 hours
-                        </option>
-                        <option value="240" {% if config['immich']['wakeup_interval']==240 %}selected{% endif %}>4 hours
-                        </option>
-                        <option value="360" {% if config['immich']['wakeup_interval']==360 %}selected{% endif %}>6 hours
-                        </option>
-                        <option value="480" {% if config['immich']['wakeup_interval']==480 %}selected{% endif %}>8 hours
-                        </option>
-                        <option value="720" {% if config['immich']['wakeup_interval']==720 %}selected{% endif %}>12
-                            hours
-                        </option>
-                        <option value="1440" {% if config['immich']['wakeup_interval']==1440 %}selected{% endif %}>24
-                            hours
-                        </option>
+                        <option value="30" data-i18n="interval.30" {% if config['immich']['wakeup_interval']==30
+                            %}selected{% endif %}>30 minutes</option>
+                        <option value="60" data-i18n="interval.60" {% if config['immich']['wakeup_interval']==60
+                            %}selected{% endif %}>1 hour</option>
+                        <option value="120" data-i18n="interval.120" {% if config['immich']['wakeup_interval']==120
+                            %}selected{% endif %}>2 hours</option>
+                        <option value="180" data-i18n="interval.180" {% if config['immich']['wakeup_interval']==180
+                            %}selected{% endif %}>3 hours</option>
+                        <option value="240" data-i18n="interval.240" {% if config['immich']['wakeup_interval']==240
+                            %}selected{% endif %}>4 hours</option>
+                        <option value="360" data-i18n="interval.360" {% if config['immich']['wakeup_interval']==360
+                            %}selected{% endif %}>6 hours</option>
+                        <option value="480" data-i18n="interval.480" {% if config['immich']['wakeup_interval']==480
+                            %}selected{% endif %}>8 hours</option>
+                        <option value="720" data-i18n="interval.720" {% if config['immich']['wakeup_interval']==720
+                            %}selected{% endif %}>12 hours</option>
+                        <option value="1440" data-i18n="interval.1440" {% if config['immich']['wakeup_interval']==1440
+                            %}selected{% endif %}>24 hours</option>
                     </select>
                 </div>
             </div>
 
             <div class="button-group">
-                <input type="submit" value="Save Configuration">
-                <button type="button" class="reset-btn" onclick="showResetConfirmation()">Reset to Default</button>
+                <input type="submit" data-i18n-value="btn.save" value="Save Configuration">
+                <button type="button" class="reset-btn" data-i18n="btn.reset"
+                    onclick="showResetConfirmation()">Reset to Default</button>
             </div>
         </form>
 
         <footer>
-            E-paper Photo Frame &copy; 2025
+            <span data-i18n="footer.name">E-paper Photo Frame</span> &copy; 2025
         </footer>
     </div>
 
     <div id="confirmModal" class="confirm-modal">
         <div class="confirm-content">
-            <h2>Reset to Default Settings</h2>
-            <p>Are you sure you want to reset all settings to default?</p>
-            <button onclick="confirmReset()">Confirm</button>
-            <button onclick="cancelReset()" class="reset-btn">Cancel</button>
+            <h2 data-i18n="modal.title">Reset to Default Settings</h2>
+            <p data-i18n="modal.body">Are you sure you want to reset all settings to default?</p>
+            <button onclick="confirmReset()" data-i18n="btn.confirm">Confirm</button>
+            <button onclick="cancelReset()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
         </div>
     </div>
 
     <script>
+        /*
+         * Client-side translations. Adding a language means adding one block here
+         * plus one <option> to #langSelect; no server-side change is required.
+         * English is the fallback for any key a translation is missing.
+         */
+        const TRANSLATIONS = {
+            'en': {
+                'page.title': 'E-paper Photo Frame Settings',
+                'language.label': 'Language',
+                'battery.title': 'Battery Consumption',
+                'battery.charge': 'Charge Level:',
+                'card.server': 'Server Connection',
+                'label.url': 'Immich Server URL:',
+                'label.album': 'Album Name:',
+                'card.display': 'Display Settings',
+                'label.rotation': 'Image Rotation:',
+                'rotation.0': '0 degrees',
+                'rotation.90': '90 degrees',
+                'rotation.180': '180 degrees',
+                'rotation.270': '270 degrees',
+                'label.displayMode': 'Display Mode:',
+                'mode.fit': 'Fit Width',
+                'mode.fill': 'Fill Screen',
+                'label.imageOrder': 'Image Display Order:',
+                'order.random': 'Random',
+                'order.newest': 'Newest First',
+                'card.enhance': 'Image Enhancement',
+                'label.enhanced': 'Color Enhancement:',
+                'label.contrast': 'Contrast:',
+                'label.strength': 'Dithering Strength:',
+                'card.power': 'Power Management',
+                'label.sleepRange': 'Sleep Time Range:',
+                'time.to': 'to',
+                'hint.sleep': 'Device will not wake up during this time period',
+                'label.wakeup': 'Wake Up Interval (Outside Sleep Time):',
+                'interval.30': '30 minutes',
+                'interval.60': '1 hour',
+                'interval.120': '2 hours',
+                'interval.180': '3 hours',
+                'interval.240': '4 hours',
+                'interval.360': '6 hours',
+                'interval.480': '8 hours',
+                'interval.720': '12 hours',
+                'interval.1440': '24 hours',
+                'btn.save': 'Save Configuration',
+                'btn.reset': 'Reset to Default',
+                'modal.title': 'Reset to Default Settings',
+                'modal.body': 'Are you sure you want to reset all settings to default?',
+                'btn.confirm': 'Confirm',
+                'btn.cancel': 'Cancel',
+                'footer.name': 'E-paper Photo Frame',
+                'notify.saved': 'Settings saved successfully!',
+                'notify.reset': 'Settings reset to default successfully!',
+                'notify.saveFailed': 'Failed to save settings'
+            },
+            'zh-Hant': {
+                'page.title': '電子紙相框設定',
+                'language.label': '語言',
+                'battery.title': '電池用量',
+                'battery.charge': '電量：',
+                'card.server': '伺服器連線',
+                'label.url': 'Immich 伺服器網址：',
+                'label.album': '相簿名稱：',
+                'card.display': '顯示設定',
+                'label.rotation': '影像旋轉：',
+                'rotation.0': '0 度',
+                'rotation.90': '90 度',
+                'rotation.180': '180 度',
+                'rotation.270': '270 度',
+                'label.displayMode': '顯示模式：',
+                'mode.fit': '完整顯示（留白）',
+                'mode.fill': '填滿螢幕（裁切）',
+                'label.imageOrder': '照片顯示順序：',
+                'order.random': '隨機',
+                'order.newest': '由新到舊',
+                'card.enhance': '影像增強',
+                'label.enhanced': '色彩增強：',
+                'label.contrast': '對比：',
+                'label.strength': '抖動強度：',
+                'card.power': '電源管理',
+                'label.sleepRange': '睡眠時段：',
+                'time.to': '至',
+                'hint.sleep': '裝置在此時段內不會喚醒',
+                'label.wakeup': '喚醒間隔（睡眠時段以外）：',
+                'interval.30': '30 分鐘',
+                'interval.60': '1 小時',
+                'interval.120': '2 小時',
+                'interval.180': '3 小時',
+                'interval.240': '4 小時',
+                'interval.360': '6 小時',
+                'interval.480': '8 小時',
+                'interval.720': '12 小時',
+                'interval.1440': '24 小時',
+                'btn.save': '儲存設定',
+                'btn.reset': '恢復預設值',
+                'modal.title': '恢復預設設定',
+                'modal.body': '確定要將所有設定恢復為預設值嗎？',
+                'btn.confirm': '確定',
+                'btn.cancel': '取消',
+                'footer.name': '電子紙相框',
+                'notify.saved': '設定已儲存！',
+                'notify.reset': '設定已恢復為預設值！',
+                'notify.saveFailed': '儲存設定失敗'
+            },
+            'zh-Hans': {
+                'page.title': '电子纸相框设置',
+                'language.label': '语言',
+                'battery.title': '电池用量',
+                'battery.charge': '电量：',
+                'card.server': '服务器连接',
+                'label.url': 'Immich 服务器地址：',
+                'label.album': '相册名称：',
+                'card.display': '显示设置',
+                'label.rotation': '图像旋转：',
+                'rotation.0': '0 度',
+                'rotation.90': '90 度',
+                'rotation.180': '180 度',
+                'rotation.270': '270 度',
+                'label.displayMode': '显示模式：',
+                'mode.fit': '完整显示（留白）',
+                'mode.fill': '填满屏幕（裁切）',
+                'label.imageOrder': '照片显示顺序：',
+                'order.random': '随机',
+                'order.newest': '从新到旧',
+                'card.enhance': '图像增强',
+                'label.enhanced': '色彩增强：',
+                'label.contrast': '对比度：',
+                'label.strength': '抖动强度：',
+                'card.power': '电源管理',
+                'label.sleepRange': '睡眠时段：',
+                'time.to': '至',
+                'hint.sleep': '设备在此时段内不会唤醒',
+                'label.wakeup': '唤醒间隔（睡眠时段以外）：',
+                'interval.30': '30 分钟',
+                'interval.60': '1 小时',
+                'interval.120': '2 小时',
+                'interval.180': '3 小时',
+                'interval.240': '4 小时',
+                'interval.360': '6 小时',
+                'interval.480': '8 小时',
+                'interval.720': '12 小时',
+                'interval.1440': '24 小时',
+                'btn.save': '保存设置',
+                'btn.reset': '恢复默认值',
+                'modal.title': '恢复默认设置',
+                'modal.body': '确定要将所有设置恢复为默认值吗？',
+                'btn.confirm': '确定',
+                'btn.cancel': '取消',
+                'footer.name': '电子纸相框',
+                'notify.saved': '设置已保存！',
+                'notify.reset': '设置已恢复为默认值！',
+                'notify.saveFailed': '保存设置失败'
+            },
+            'ja': {
+                'page.title': '電子ペーパーフォトフレーム設定',
+                'language.label': '言語',
+                'battery.title': 'バッテリー残量',
+                'battery.charge': '残量：',
+                'card.server': 'サーバー接続',
+                'label.url': 'Immich サーバー URL：',
+                'label.album': 'アルバム名：',
+                'card.display': '表示設定',
+                'label.rotation': '画像の回転：',
+                'rotation.0': '0 度',
+                'rotation.90': '90 度',
+                'rotation.180': '180 度',
+                'rotation.270': '270 度',
+                'label.displayMode': '表示モード：',
+                'mode.fit': '全体表示（余白あり）',
+                'mode.fill': '画面いっぱい（トリミング）',
+                'label.imageOrder': '写真の表示順：',
+                'order.random': 'ランダム',
+                'order.newest': '新しい順',
+                'card.enhance': '画像補正',
+                'label.enhanced': '彩度：',
+                'label.contrast': 'コントラスト：',
+                'label.strength': 'ディザリング強度：',
+                'card.power': '電源管理',
+                'label.sleepRange': 'スリープ時間帯：',
+                'time.to': '〜',
+                'hint.sleep': 'この時間帯はデバイスが起動しません',
+                'label.wakeup': '更新間隔（スリープ時間帯以外）：',
+                'interval.30': '30 分',
+                'interval.60': '1 時間',
+                'interval.120': '2 時間',
+                'interval.180': '3 時間',
+                'interval.240': '4 時間',
+                'interval.360': '6 時間',
+                'interval.480': '8 時間',
+                'interval.720': '12 時間',
+                'interval.1440': '24 時間',
+                'btn.save': '設定を保存',
+                'btn.reset': '初期値に戻す',
+                'modal.title': '初期設定に戻す',
+                'modal.body': 'すべての設定を初期値に戻してもよろしいですか？',
+                'btn.confirm': '実行',
+                'btn.cancel': 'キャンセル',
+                'footer.name': '電子ペーパーフォトフレーム',
+                'notify.saved': '設定を保存しました',
+                'notify.reset': '設定を初期値に戻しました',
+                'notify.saveFailed': '設定の保存に失敗しました'
+            }
+        };
+
+        const FALLBACK_LANG = 'en';
+        const LANG_STORAGE_KEY = 'epf_lang';
+        let currentLang = FALLBACK_LANG;
+
+        // localStorage throws in some privacy modes, so every access is guarded
+        function readStoredLang() {
+            try {
+                return localStorage.getItem(LANG_STORAGE_KEY);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function storeLang(lang) {
+            try {
+                localStorage.setItem(LANG_STORAGE_KEY, lang);
+            } catch (e) {
+                /* preference simply will not persist */
+            }
+        }
+
+        // Stored choice wins; otherwise fall back to the browser's preferred languages.
+        // A bare 'zh' tag is treated as Simplified, matching CLDR.
+        function detectLanguage() {
+            const stored = readStoredLang();
+            if (stored && TRANSLATIONS[stored]) {
+                return stored;
+            }
+
+            const preferred = navigator.languages || [navigator.language || ''];
+            for (const raw of preferred) {
+                const tag = raw.toLowerCase();
+                if (tag.startsWith('ja')) {
+                    return 'ja';
+                }
+                if (tag.startsWith('zh')) {
+                    return /hant|tw|hk|mo/.test(tag) ? 'zh-Hant' : 'zh-Hans';
+                }
+                if (tag.startsWith('en')) {
+                    return 'en';
+                }
+            }
+            return FALLBACK_LANG;
+        }
+
+        function t(key) {
+            const dict = TRANSLATIONS[currentLang] || {};
+            if (key in dict) {
+                return dict[key];
+            }
+            return TRANSLATIONS[FALLBACK_LANG][key] || key;
+        }
+
+        function applyTranslations() {
+            document.documentElement.lang = currentLang;
+            document.title = t('page.title');
+
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-value]').forEach(el => {
+                el.value = t(el.dataset.i18nValue);
+            });
+            document.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+                el.setAttribute('aria-label', t(el.dataset.i18nAriaLabel));
+            });
+        }
+
+        function setLanguage(lang) {
+            currentLang = TRANSLATIONS[lang] ? lang : FALLBACK_LANG;
+            storeLang(currentLang);
+            document.getElementById('langSelect').value = currentLang;
+            applyTranslations();
+        }
+
         function showNotification(message) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
@@ -573,17 +900,18 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Update battery level visualization
-            const batteryPercentage = {{ battery_percentage|default (0)
-        }};
-        const batteryLevel = document.getElementById('batteryLevel');
+            setLanguage(detectLanguage());
 
-        if (batteryPercentage > 0) {
-            batteryLevel.style.width = batteryPercentage + '%';
-            // Remove color classes if using consistent red
-            batteryLevel.className = 'battery-level';
-        }
-    });
+            // Update battery level visualization
+            const batteryPercentage = {{ battery_percentage|default(0) }};
+            const batteryLevel = document.getElementById('batteryLevel');
+
+            if (batteryPercentage > 0) {
+                batteryLevel.style.width = batteryPercentage + '%';
+                // Remove color classes if using consistent red
+                batteryLevel.className = 'battery-level';
+            }
+        });
 
         function showResetConfirmation() {
             document.getElementById('confirmModal').style.display = 'flex';
@@ -616,7 +944,7 @@
             document.getElementById('sleep_end_minute').value = '0';
             document.getElementById('wakeup_interval').value = '30';
 
-            showNotification('Settings reset to default successfully!');
+            showNotification(t('notify.reset'));
             document.getElementById('confirmModal').style.display = 'none';
         }
 
@@ -634,13 +962,13 @@
             })
                 .then(response => {
                     if (response.ok) {
-                        showNotification('Settings saved successfully!');
+                        showNotification(t('notify.saved'));
                         return;
                     }
-                    throw new Error('Failed to save settings');
+                    throw new Error(t('notify.saveFailed'));
                 })
                 .catch(error => {
-                    showNotification('Error: ' + error.message);
+                    showNotification(error.message);
                 });
         }
     </script>
