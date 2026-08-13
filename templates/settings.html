@@ -415,10 +415,11 @@
                 <h2 class="battery-title" data-i18n="battery.title">Battery Consumption</h2>
                 <p class="battery-charge">
                     <span data-i18n="battery.charge">Charge Level:</span>
-                    <span id="batteryPercent">{{ "%.1f"|format(battery_percentage) }}%</span>
+                    <span id="batteryPercent">{{ "%.1f"|format(battery_percentage|default(0)) }}%</span>
                 </p>
                 <div class="battery-bar">
-                    <div id="batteryLevel" class="battery-level" style="width: {{ battery_percentage }}%"></div>
+                    <div id="batteryLevel" class="battery-level"
+                        style="width: {{ battery_percentage|default(0) }}%"></div>
                 </div>
             </div>
         </div>
