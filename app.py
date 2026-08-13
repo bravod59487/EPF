@@ -553,6 +553,11 @@ def calculate_battery_percentage(voltage):
     
     return 0
 
+@app.context_processor
+def inject_current_year():
+    """ Expose the current year to every template, so the footer never goes stale """
+    return {'current_year': datetime.now().year}
+
 @app.route('/setting', methods=['GET', 'POST'])
 def settings():
     global current_config, last_battery_voltage, last_battery_update
