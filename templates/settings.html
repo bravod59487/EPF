@@ -801,6 +801,13 @@
             }
         };
 
+        /*
+         * DEFAULT_CONFIG['immich'] as rendered by the server. The reset button
+         * reads its values from here so it cannot drift away from the defaults
+         * the server itself falls back to.
+         */
+        const DEFAULT_SETTINGS = {{ defaults|tojson }};
+
         const FALLBACK_LANG = 'en';
         const LANG_STORAGE_KEY = 'epf_lang';
         let currentLang = FALLBACK_LANG;
@@ -918,31 +925,18 @@
         }
 
         function confirmReset() {
-            // Reset settings to default
-            document.getElementById('url').value = 'http://localhost';
-            document.getElementById('album').value = 'default_album';
-            document.getElementById('rotation').selectedIndex = 0;
-            document.getElementById('display_mode').selectedIndex = 0;
-            document.getElementById('image_order').selectedIndex = 0;
+            // Reset settings to the server's defaults
+            ['url', 'album', 'rotation', 'display_mode', 'image_order',
+                'sleep_start_hour', 'sleep_start_minute',
+                'sleep_end_hour', 'sleep_end_minute', 'wakeup_interval'].forEach(id => {
+                    document.getElementById(id).value = String(DEFAULT_SETTINGS[id]);
+                });
 
-            const sliders = [
-                { id: 'enhanced', defaultValue: 1.0 },
-                { id: 'contrast', defaultValue: 1.0 },
-                { id: 'strength', defaultValue: 0.8 }
-            ];
-
-            sliders.forEach(slider => {
-                const sliderElement = document.getElementById(slider.id);
-                const outputElement = sliderElement.nextElementSibling;
-                sliderElement.value = slider.defaultValue;
-                outputElement.textContent = slider.defaultValue.toFixed(1);
+            ['enhanced', 'contrast', 'strength'].forEach(id => {
+                const sliderElement = document.getElementById(id);
+                sliderElement.value = DEFAULT_SETTINGS[id];
+                updateSliderValue(sliderElement);
             });
-
-            document.getElementById('sleep_start_hour').value = '23';
-            document.getElementById('sleep_start_minute').value = '0';
-            document.getElementById('sleep_end_hour').value = '6';
-            document.getElementById('sleep_end_minute').value = '0';
-            document.getElementById('wakeup_interval').value = '30';
 
             showNotification(t('notify.reset'));
             document.getElementById('confirmModal').style.display = 'none';

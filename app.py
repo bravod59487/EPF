@@ -595,8 +595,9 @@ def settings():
         
         # Validate rotation values
         if new_config['immich']['rotation'] not in [0, 90, 180, 270]:
-            return render_template('settings.html', 
-                                   config=current_config, 
+            return render_template('settings.html',
+                                   config=current_config,
+                                   defaults=DEFAULT_CONFIG['immich'],
                                    error="Rotation must be 0, 90, 180, or 270 degrees")
         
         try:
@@ -610,12 +611,14 @@ def settings():
             return redirect(url_for('settings'))
         
         except Exception as e:
-            return render_template('settings.html', 
-                                   config=current_config, 
+            return render_template('settings.html',
+                                   config=current_config,
+                                   defaults=DEFAULT_CONFIG['immich'],
                                    error=f"Error saving configuration: {str(e)}")
-    
-    return render_template('settings.html', 
-                         config=current_config, 
+
+    return render_template('settings.html',
+                         config=current_config,
+                         defaults=DEFAULT_CONFIG['immich'],
                          battery_voltage=battery_voltage,
                          battery_percentage=battery_percentage)
 
