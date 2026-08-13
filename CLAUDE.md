@@ -14,21 +14,12 @@ There are no tests, no linter config, and no build system for the Python side.
 
 ## Server: build and run
 
-```bash
-docker build -t jwchen119/epf .
-docker run --name epf \
-  -e IMMICH_API_KEY='<key>' \
-  -v /host/config:/config \
-  -v /host/photos:/photos \
-  -d -p <port>:5000 jwchen119/epf
-```
+`docker compose up -d`, with a `.env` alongside holding `IMMICH_API_KEY`. Or directly: `python app.py` (serves on `0.0.0.0:5000`).
 
-Or directly: `python app.py` (serves on `0.0.0.0:5000`).
+`docker-compose.yml` exists because two things are easy to get wrong and both fail silently:
 
-Two paths are **hardcoded**, not configurable:
-
-- `/config/config.yaml` — written by the settings page, watched by `watchdog` for external edits. Created with `DEFAULT_CONFIG` if missing. Without a volume here, settings are lost on container restart.
-- `/photos` (override with `IMMICH_PHOTO_DEST`) — holds only `tracking.txt`; no photos are ever written to disk.
+- Two paths are **hardcoded**, not configurable: `/config/config.yaml` (written by the settings page, watched by `watchdog` for external edits, created from `DEFAULT_CONFIG` if missing) and `/photos` (override with `IMMICH_PHOTO_DEST`; holds only `tracking.txt` — no photos are ever written to disk). A plain `docker restart` keeps them, but recreating the container — which is what updating the image requires — discards anything not bind-mounted, so settings revert to `DEFAULT_CONFIG` without any error.
+- **`TZ` must be set.** The base image has no timezone, so `datetime.now()` returns UTC. `/sleep` derives both the sleep window and the wake-up schedule from local time, so an unset `TZ` shifts the frame's quiet hours by the whole UTC offset. Zone data is already in the image, so the env var alone is enough — no `tzdata` install and no `/etc/localtime` mount.
 
 `IMMICH_API_KEY` is read once at import into the module-level `headers` dict. Note the README's `docker run` example writes `IMMICH-API-KEY` with hyphens, which the app does not read.
 

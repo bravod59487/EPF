@@ -11,6 +11,7 @@ Mostly modifieded from TRMNL WiFiCaptive[https://github.com/usetrmnl/firmware/tr
 - **Fully Automated Photo Management**: Manage photos through Immich without additional manual processes; photos will automatically sync to the frame.
 - **Ultra-low Power Consumption**: As all image processing and quantization are handled by the server, the device only consumes ~16µA during deep sleep, with photo updates completed within 30 seconds.
 - **Customizable Display**: Configure photo orientation, basic color adjustments, album name, and more through the server webpage.
+- **Multi-language settings page**: The settings page is available in English, Traditional Chinese, Simplified Chinese and Japanese, picked automatically from your browser's language and switchable from the header.
 - **Cython impelementation**: Use Cython to significantly accelerate photo processing, achieving up to a 5x speed boost.
 - **HTTPS supported**: ESP32 now can connect to secured server.
 - **Sleep time impelementation**: ESP32 will enter deep sleep during the specified sleep period.
@@ -53,12 +54,28 @@ If you prefer not to build the image yourself, you can download the precompiled 
 docker pull jwchen119/epf
 ```
 
-### Run the Container
+### Run with Docker Compose (recommended)
 
-Create a container from the image. Don’t forget to edit your Immich API key.
+Create a `.env` file next to `docker-compose.yml` holding your Immich API key, then bring it up:
 
 ```bash
-$ docker run --name epf -e IMMICH-API-KEY='<replace-your-immich-api-key>' -d -p <replace-port>:5000 jwchen119/epf
+$ echo "IMMICH_API_KEY=<replace-your-immich-api-key>" > .env
+$ docker compose up -d
+```
+
+`./config` and `./photos` are bind-mounted, so settings saved from the web page and the shown-photo history survive `docker compose pull` and a container rebuild. `TZ` is set too, because the sleep window and wake-up schedule are evaluated against local time and the image would otherwise run in UTC. Both `EPF_PORT` (default `15001`) and `TZ` (default `Asia/Taipei`) can be overridden in the same `.env` file.
+
+### Run the Container Manually
+
+If you would rather not use compose, mount both directories yourself. Anything written outside them lives only in the container and is lost as soon as the container is recreated - which is what updating to a new image does:
+
+```bash
+$ docker run --name epf \
+    -e IMMICH_API_KEY='<replace-your-immich-api-key>' \
+    -e TZ=Asia/Taipei \
+    -v "$(pwd)/config:/config" \
+    -v "$(pwd)/photos:/photos" \
+    -d -p <replace-port>:5000 jwchen119/epf
 ```
 
 ### Configure `config.yaml` (no longer needed, configure the settings directly from webpage)
