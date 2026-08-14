@@ -8,19 +8,59 @@
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon-32.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icon-180.png') }}">
     <style>
+        /*
+         * The palette is taken from the panel itself: charcoal bezel, warm paper
+         * white, and the muted slate / moss / mustard the Spectra 6 palette
+         * actually renders. Everything is a token here, so re-theming the page
+         * means editing this block and nothing else.
+         */
         :root {
-            --primary-color: #4361EE;
-            --primary-light: #4895EF;
-            --accent-color: #3F37C9;
-            --error-color: #e63946;
-            --success-color: #2a9d8f;
-            --text-color: #2b2d42;
-            --text-light: #8d99ae;
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s ease;
+            --paper: #f2efe6;
+            --surface: #fffdf8;
+            --surface-2: #f7f4ec;
+            --bezel: #2b2f33;
+            --bezel-2: #212528;
+            --ink: #23282c;
+            --ink-2: #5c646b;
+            --ink-3: #8b929a;
+            --line: #e2dccf;
+            --line-strong: #cec7b6;
+            --accent: #4f6b80;
+            --accent-2: #3c5364;
+            --accent-soft: rgba(79, 107, 128, 0.12);
+            --moss: #6f7f45;
+            --sun: #cf9f34;
+            --clay: #a8503c;
+            --on-accent: #ffffff;
+            --radius: 14px;
+            --radius-sm: 9px;
+            --shadow: 0 1px 2px rgba(35, 40, 44, 0.04), 0 8px 24px rgba(35, 40, 44, 0.06);
+            --shadow-lift: 0 2px 4px rgba(35, 40, 44, 0.06), 0 14px 36px rgba(35, 40, 44, 0.1);
+            --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --paper: #16191b;
+                --surface: #1f2326;
+                --surface-2: #262b2f;
+                --bezel: #1b1e21;
+                --bezel-2: #141719;
+                --ink: #e9e5db;
+                --ink-2: #a6acb2;
+                --ink-3: #7b838a;
+                --line: #2f3539;
+                --line-strong: #3d4449;
+                --accent: #7fa0b8;
+                --accent-2: #9dbcd2;
+                --accent-soft: rgba(127, 160, 184, 0.16);
+                --moss: #9aad63;
+                --sun: #e0b95a;
+                --clay: #cc7a63;
+                --on-accent: #14181b;
+                --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+                --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 14px 36px rgba(0, 0, 0, 0.4);
+            }
         }
 
         * {
@@ -30,123 +70,204 @@
         }
 
         body {
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+            background-color: var(--paper);
+            color: var(--ink);
             line-height: 1.6;
-            padding: 0;
-            margin: 0;
+            -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
+        /* ---------- header ---------- */
 
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1.5rem 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            margin-bottom: 2rem;
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: var(--bezel);
+            /* A faint dot grid, echoing the dithering the panel itself uses */
+            background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+            background-size: 7px 7px;
+            border-bottom: 1px solid var(--bezel-2);
+            padding: 0.9rem 0;
         }
 
         .header-inner {
-            max-width: 800px;
+            max-width: 780px;
             margin: 0 auto;
-            padding: 0 2rem;
+            padding: 0 1.5rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
         }
 
-        header h1 {
-            font-weight: 500;
-            font-size: 1.8rem;
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            min-width: 0;
+        }
+
+        .brand img {
+            width: 38px;
+            height: 38px;
+            border-radius: 9px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        .brand h1 {
+            color: #f4f1e8;
+            font-weight: 600;
+            font-size: 1.12rem;
+            letter-spacing: 0.01em;
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .lang-switch select {
             width: auto;
-            padding: 0.4rem 0.6rem;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: var(--border-radius);
-            background-color: rgba(255, 255, 255, 0.15);
-            color: white;
-            font-size: 0.9rem;
+            padding: 0.42rem 2rem 0.42rem 0.7rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius-sm);
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #f4f1e8;
+            font-size: 0.86rem;
+            font-family: inherit;
             cursor: pointer;
-            transition: var(--transition);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23f4f1e8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.65rem center;
+            background-size: 10px;
+            transition: background-color var(--transition), border-color var(--transition);
         }
 
         .lang-switch select:hover {
-            background-color: rgba(255, 255, 255, 0.25);
+            background-color: rgba(255, 255, 255, 0.15);
         }
 
-        .lang-switch select:focus {
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+        .lang-switch select:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.6);
+            outline-offset: 2px;
         }
 
-        /* Native dropdown lists render on a white surface, so options need dark text */
+        /* Native dropdown lists render on their own surface, so options need real colors */
         .lang-switch select option {
-            color: var(--text-color);
-            background-color: white;
+            color: var(--ink);
+            background-color: var(--surface);
+        }
+
+        /* ---------- layout ---------- */
+
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 1rem;
         }
 
         .card {
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            transition: var(--transition);
+            background-color: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1.6rem;
+            margin-bottom: 1.25rem;
         }
 
-        .card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        .card-head {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-bottom: 1.4rem;
+            padding-bottom: 0.9rem;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .card-head svg {
+            width: 19px;
+            height: 19px;
+            color: var(--accent);
+            flex-shrink: 0;
         }
 
         .card-title {
-            font-size: 1.2rem;
-            color: var(--primary-color);
-            margin-bottom: 1.2rem;
-            font-weight: 500;
+            font-size: 0.94rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: var(--ink-2);
         }
 
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1.4rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
         }
 
         label {
             display: block;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.45rem;
             font-weight: 500;
-            color: var(--text-color);
+            font-size: 0.92rem;
+            color: var(--ink);
         }
+
+        .hint {
+            font-size: 0.82rem;
+            color: var(--ink-3);
+            margin-top: 0.5rem;
+        }
+
+        /* ---------- inputs ---------- */
 
         input[type="text"],
         select {
             width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: var(--transition);
+            padding: 0.7rem 0.85rem;
+            border: 1px solid var(--line-strong);
+            border-radius: var(--radius-sm);
+            background-color: var(--surface-2);
+            color: var(--ink);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition);
+        }
+
+        input[type="text"]:hover,
+        select:hover {
+            border-color: var(--accent);
         }
 
         input[type="text"]:focus,
         select:focus {
-            border-color: var(--primary-light);
+            border-color: var(--accent);
+            background-color: var(--surface);
             outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
-        .small-text {
-            font-size: 0.85rem;
-            color: var(--text-light);
-            margin-top: 0.5rem;
+        select {
+            appearance: none;
+            padding-right: 2.2rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%235c646b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.8rem center;
+            background-size: 11px;
+            cursor: pointer;
         }
+
+        @media (prefers-color-scheme: dark) {
+            select {
+                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a6acb2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            }
+        }
+
+        /* ---------- sliders ---------- */
 
         .slider-container {
             display: flex;
@@ -157,218 +278,292 @@
         .slider-container input[type="range"] {
             flex-grow: 1;
             height: 6px;
-            -webkit-appearance: none;
-            background: #eee;
+            appearance: none;
             border-radius: 3px;
             outline: none;
+            cursor: pointer;
+            /* --fill is kept in sync by updateSliderValue() */
+            background: linear-gradient(to right,
+                    var(--accent) 0%, var(--accent) var(--fill, 50%),
+                    var(--line) var(--fill, 50%), var(--line) 100%);
         }
 
         .slider-container input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
             appearance: none;
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: var(--primary-color);
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            box-shadow: 0 1px 4px rgba(35, 40, 44, 0.2);
             cursor: pointer;
-            transition: var(--transition);
+            transition: transform var(--transition), box-shadow var(--transition);
         }
 
-        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 2px solid var(--accent);
+            cursor: pointer;
+        }
+
+        .slider-container input[type="range"]:hover::-webkit-slider-thumb {
+            transform: scale(1.12);
+        }
+
+        .slider-container input[type="range"]:focus-visible::-webkit-slider-thumb {
+            box-shadow: 0 0 0 4px var(--accent-soft);
         }
 
         .slider-value {
-            background-color: var(--primary-color);
-            color: white;
-            width: 50px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 15px;
-            font-size: 0.9rem;
-            font-weight: 500;
+            min-width: 46px;
+            padding: 0.2rem 0.5rem;
+            text-align: center;
+            background-color: var(--accent-soft);
+            color: var(--accent-2);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
         }
 
-        .error {
-            color: var(--error-color);
-            background-color: rgba(230, 57, 70, 0.1);
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 1.5rem;
+        /* ---------- sleep time range ---------- */
+
+        .time-input {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
         }
+
+        .time-input select {
+            width: auto;
+            min-width: 66px;
+            padding: 0.55rem 1.7rem 0.55rem 0.6rem;
+            background-position: right 0.5rem center;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .time-colon {
+            color: var(--ink-3);
+            font-weight: 600;
+        }
+
+        .time-sep {
+            margin: 0 0.5rem;
+            color: var(--ink-3);
+            font-size: 0.88rem;
+        }
+
+        /* ---------- battery ---------- */
+
+        .battery-stat {
+            display: flex;
+            align-items: baseline;
+            gap: 0.55rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .battery-number {
+            font-size: 2rem;
+            font-weight: 600;
+            line-height: 1;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .battery-caption {
+            font-size: 0.85rem;
+            color: var(--ink-3);
+        }
+
+        .battery-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--line);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .battery-level {
+            height: 100%;
+            width: 0;
+            border-radius: 4px;
+            background-color: var(--ink-3);
+            transition: width 700ms ease, background-color var(--transition);
+        }
+
+        .battery-level.is-good {
+            background-color: var(--moss);
+        }
+
+        .battery-level.is-low {
+            background-color: var(--sun);
+        }
+
+        .battery-level.is-critical {
+            background-color: var(--clay);
+        }
+
+        .battery-level.is-unknown {
+            background-color: var(--line-strong);
+        }
+
+        /* ---------- buttons ---------- */
 
         .button-group {
             display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
+            gap: 0.75rem;
+            margin-top: 1.75rem;
+            flex-wrap: wrap;
         }
 
         button,
         input[type="submit"] {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
+            padding: 0.72rem 1.35rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            background-color: var(--accent);
+            color: var(--on-accent);
+            font-size: 0.93rem;
+            font-weight: 600;
+            font-family: inherit;
             cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: var(--transition);
+            transition: background-color var(--transition), border-color var(--transition), transform var(--transition);
         }
 
         button:hover,
         input[type="submit"]:hover {
-            background-color: var(--accent-color);
+            background-color: var(--accent-2);
+        }
+
+        button:active,
+        input[type="submit"]:active {
+            transform: translateY(1px);
+        }
+
+        button:focus-visible,
+        input[type="submit"]:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
         .reset-btn {
-            background-color: #f8f9fa;
-            color: var(--text-color);
-            border: 1px solid #ddd;
+            background-color: transparent;
+            color: var(--ink-2);
+            border-color: var(--line-strong);
         }
 
         .reset-btn:hover {
-            background-color: #e9ecef;
-            color: var(--text-color);
+            background-color: var(--surface-2);
+            border-color: var(--ink-3);
+            color: var(--ink);
+        }
+
+        /* ---------- feedback ---------- */
+
+        .error {
+            display: flex;
+            gap: 0.6rem;
+            color: var(--clay);
+            background-color: var(--surface);
+            border: 1px solid var(--clay);
+            border-left-width: 3px;
+            padding: 0.9rem 1.1rem;
+            border-radius: var(--radius-sm);
+            margin-bottom: 1.25rem;
+            font-size: 0.92rem;
+        }
+
+        #notification {
+            position: fixed;
+            top: 1.25rem;
+            left: 50%;
+            transform: translate(-50%, -12px);
+            background-color: var(--bezel);
+            color: #f4f1e8;
+            padding: 0.75rem 1.3rem;
+            border-radius: var(--radius-sm);
+            box-shadow: var(--shadow-lift);
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: none;
+            z-index: 1100;
+            opacity: 0;
+            transition: opacity var(--transition), transform var(--transition);
+        }
+
+        #notification.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
         }
 
         .confirm-modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
+            inset: 0;
+            background: rgba(20, 23, 25, 0.55);
             align-items: center;
             justify-content: center;
             z-index: 1000;
+            padding: 1.5rem;
         }
 
         .confirm-content {
-            background: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
+            background: var(--surface);
+            border: 1px solid var(--line);
+            padding: 1.75rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lift);
             text-align: center;
-            max-width: 400px;
-            width: 90%;
+            max-width: 380px;
+            width: 100%;
         }
 
         .confirm-content h2 {
-            margin-bottom: 1rem;
-            color: var(--text-color);
+            margin-bottom: 0.6rem;
+            font-size: 1.1rem;
+            color: var(--ink);
         }
 
         .confirm-content p {
             margin-bottom: 1.5rem;
+            color: var(--ink-2);
+            font-size: 0.92rem;
         }
 
-        .confirm-content button {
-            padding: 0.7rem 1.2rem;
-            margin: 0 0.5rem;
-        }
-
-        #notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: var(--success-color);
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            display: none;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        #notification.show {
-            opacity: 1;
-        }
-
-        .time-input {
+        .confirm-actions {
             display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .time-input select {
-            width: 70px;
-            padding: 0.6rem;
-        }
-
-        .battery-title {
-            font-size: 1.6rem;
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .battery-charge {
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 1rem;
-        }
-
-        .battery-bar {
-            width: 100%;
-            height: 16px;
-            background-color: #f0f0f0;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .battery-level {
-            height: 100%;
-            background-color: #ff6347;
-            /* Tomato red color as shown in image */
-            border-radius: 8px;
-            transition: width 1s ease;
-        }
-
-        .battery-level.high,
-        .battery-level.medium,
-        .battery-level.low,
-        .battery-level.critical {
-            background-color: #ff6347;
-            animation: none;
-        }
-
-        .section-divider {
-            height: 1px;
-            background-color: #eee;
-            margin: 2rem 0;
+            gap: 0.65rem;
+            justify-content: center;
         }
 
         footer {
             text-align: center;
-            padding: 1.5rem 0;
-            margin-top: 2rem;
-            font-size: 0.9rem;
-            color: var(--text-light);
+            padding: 1.5rem 0 2.5rem;
+            font-size: 0.83rem;
+            color: var(--ink-3);
         }
 
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
+        /* ---------- responsive ---------- */
+
+        @media (max-width: 640px) {
             .container {
-                padding: 1rem;
+                padding: 1.25rem 1rem 0.5rem;
             }
 
             .header-inner {
                 padding: 0 1rem;
             }
 
-            header h1 {
-                font-size: 1.5rem;
+            .brand h1 {
+                font-size: 1rem;
             }
 
             .card {
-                padding: 1.5rem;
+                padding: 1.25rem;
             }
 
             .button-group {
@@ -379,9 +574,14 @@
             input[type="submit"] {
                 width: 100%;
             }
+        }
 
-            .time-input {
-                flex-wrap: wrap;
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                transition-duration: 0.01ms !important;
             }
         }
     </style>
@@ -390,9 +590,12 @@
 <body>
     <div id="notification"></div>
 
-    <header>
+    <header class="app-header">
         <div class="header-inner">
-            <h1 data-i18n="page.title">E-paper Photo Frame Settings</h1>
+            <div class="brand">
+                <img src="{{ url_for('static', filename='icon-180.png') }}" alt="">
+                <h1 data-i18n="page.title">E-paper Photo Frame Settings</h1>
+            </div>
             <div class="lang-switch">
                 <select id="langSelect" data-i18n-aria-label="language.label" aria-label="Language"
                     onchange="setLanguage(this.value)">
@@ -407,28 +610,48 @@
 
     <div class="container">
         {% if error %}
-        <div class="error">
-            {{ error }}
+        <div class="error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                width="18" height="18" style="flex-shrink:0;margin-top:2px">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7.5v5M12 16h.01" />
+            </svg>
+            <span>{{ error }}</span>
         </div>
         {% endif %}
 
         <div class="card">
-            <div class="battery-info">
-                <h2 class="battery-title" data-i18n="battery.title">Battery Consumption</h2>
-                <p class="battery-charge">
-                    <span data-i18n="battery.charge">Charge Level:</span>
-                    <span id="batteryPercent">{{ "%.1f"|format(battery_percentage|default(0)) }}%</span>
-                </p>
-                <div class="battery-bar">
-                    <div id="batteryLevel" class="battery-level"
-                        style="width: {{ battery_percentage|default(0) }}%"></div>
-                </div>
+            <div class="card-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="2" y="7" width="17" height="10" rx="2.5" />
+                    <path d="M21.5 10.5v3" />
+                </svg>
+                <h2 class="card-title" data-i18n="battery.title">Battery</h2>
             </div>
+            <div class="battery-stat">
+                <span id="batteryPercent"
+                    class="battery-number">{{ "%.1f"|format(battery_percentage|default(0)) }}%</span>
+                <span class="battery-caption" data-i18n="battery.charge">Charge Level</span>
+            </div>
+            <div class="battery-bar">
+                <div id="batteryLevel" class="battery-level"
+                    style="width: {{ battery_percentage|default(0) }}%"></div>
+            </div>
+            <p class="hint" id="batteryHint" data-i18n="battery.unknown" hidden>Waiting for the frame to check in</p>
         </div>
 
         <form id="settingsForm" method="POST" onsubmit="handleSubmit(event)">
             <div class="card">
-                <h2 class="card-title" data-i18n="card.server">Server Connection</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="7" rx="2" />
+                        <rect x="3" y="13" width="18" height="7" rx="2" />
+                        <path d="M7 7.5h.01M7 16.5h.01" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.server">Server Connection</h2>
+                </div>
                 <div class="form-group">
                     <label for="url" data-i18n="label.url">Immich Server URL:</label>
                     <input type="text" id="url" name="url" value="{{ config['immich']['url'] }}"
@@ -443,7 +666,14 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title" data-i18n="card.display">Display Settings</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="2.5" y="4" width="19" height="13" rx="2" />
+                        <path d="M9 20h6M12 17v3" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.display">Display Settings</h2>
+                </div>
                 <div class="form-group">
                     <label for="rotation" data-i18n="label.rotation">Image Rotation:</label>
                     <select id="rotation" name="rotation">
@@ -480,7 +710,15 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title" data-i18n="card.enhance">Image Enhancement</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M4 7h9M19 7h1M4 17h5M15 17h5" />
+                        <circle cx="16" cy="7" r="2.6" />
+                        <circle cx="12" cy="17" r="2.6" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.enhance">Image Enhancement</h2>
+                </div>
                 <div class="form-group">
                     <label for="enhanced" data-i18n="label.enhanced">Color Enhancement:</label>
                     <div class="slider-container">
@@ -510,7 +748,13 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title" data-i18n="card.power">Power Management</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.power">Power Management</h2>
+                </div>
                 <div class="form-group">
                     <label for="sleep_start_hour" data-i18n="label.sleepRange">Sleep Time Range:</label>
                     <div class="time-input">
@@ -522,7 +766,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        :
+                        <span class="time-colon">:</span>
                         <select id="sleep_start_minute" name="sleep_start_minute">
                             {% for minute in range(0, 60, 1) %}
                             <option value="{{ minute }}" {% if config['immich']['sleep_start_minute']==minute
@@ -531,7 +775,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <span style="margin: 0 10px;" data-i18n="time.to">to</span>
+                        <span class="time-sep" data-i18n="time.to">to</span>
                         <select id="sleep_end_hour" name="sleep_end_hour">
                             {% for hour in range(24) %}
                             <option value="{{ hour }}" {% if config['immich']['sleep_end_hour']==hour %}selected{% endif
@@ -540,7 +784,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        :
+                        <span class="time-colon">:</span>
                         <select id="sleep_end_minute" name="sleep_end_minute">
                             {% for minute in range(0, 60, 1) %}
                             <option value="{{ minute }}" {% if config['immich']['sleep_end_minute']==minute %}selected{%
@@ -550,7 +794,7 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="small-text" data-i18n="hint.sleep">Device will not wake up during this time period</div>
+                    <div class="hint" data-i18n="hint.sleep">Device will not wake up during this time period</div>
                 </div>
 
                 <div class="form-group">
@@ -594,8 +838,10 @@
         <div class="confirm-content">
             <h2 data-i18n="modal.title">Reset to Default Settings</h2>
             <p data-i18n="modal.body">Are you sure you want to reset all settings to default?</p>
-            <button onclick="confirmReset()" data-i18n="btn.confirm">Confirm</button>
-            <button onclick="cancelReset()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
+            <div class="confirm-actions">
+                <button onclick="confirmReset()" data-i18n="btn.confirm">Confirm</button>
+                <button onclick="cancelReset()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -609,8 +855,9 @@
             'en': {
                 'page.title': 'E-paper Photo Frame Settings',
                 'language.label': 'Language',
-                'battery.title': 'Battery Consumption',
-                'battery.charge': 'Charge Level:',
+                'battery.title': 'Battery',
+                'battery.charge': 'Charge Level',
+                'battery.unknown': 'Waiting for the frame to check in',
                 'card.server': 'Server Connection',
                 'label.url': 'Immich Server URL:',
                 'label.album': 'Album Name:',
@@ -658,8 +905,9 @@
             'zh-Hant': {
                 'page.title': '電子紙相框設定',
                 'language.label': '語言',
-                'battery.title': '電池用量',
-                'battery.charge': '電量：',
+                'battery.title': '電池',
+                'battery.charge': '電量',
+                'battery.unknown': '尚未收到相框回報',
                 'card.server': '伺服器連線',
                 'label.url': 'Immich 伺服器網址：',
                 'label.album': '相簿名稱：',
@@ -707,8 +955,9 @@
             'zh-Hans': {
                 'page.title': '电子纸相框设置',
                 'language.label': '语言',
-                'battery.title': '电池用量',
-                'battery.charge': '电量：',
+                'battery.title': '电池',
+                'battery.charge': '电量',
+                'battery.unknown': '尚未收到相框回报',
                 'card.server': '服务器连接',
                 'label.url': 'Immich 服务器地址：',
                 'label.album': '相册名称：',
@@ -756,8 +1005,9 @@
             'ja': {
                 'page.title': '電子ペーパーフォトフレーム設定',
                 'language.label': '言語',
-                'battery.title': 'バッテリー残量',
-                'battery.charge': '残量：',
+                'battery.title': 'バッテリー',
+                'battery.charge': '残量',
+                'battery.unknown': 'フレームからの通信を待っています',
                 'card.server': 'サーバー接続',
                 'label.url': 'Immich サーバー URL：',
                 'label.album': 'アルバム名：',
@@ -907,20 +1157,33 @@
             const value = parseFloat(slider.value);
             const output = slider.nextElementSibling;
             output.textContent = value.toFixed(1);
+
+            // Paint the filled portion of the track up to the thumb
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+            slider.style.setProperty('--fill', pct + '%');
+        }
+
+        function updateBattery(percentage) {
+            const level = document.getElementById('batteryLevel');
+            const clamped = Math.max(0, Math.min(100, percentage));
+
+            let state = 'is-unknown';
+            if (percentage > 0) {
+                state = percentage >= 50 ? 'is-good' : percentage >= 20 ? 'is-low' : 'is-critical';
+            }
+            level.className = 'battery-level ' + state;
+            level.style.width = clamped + '%';
+
+            // 0% means the device has never reported in, not a flat battery
+            document.getElementById('batteryHint').hidden = percentage > 0;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
             setLanguage(detectLanguage());
-
-            // Update battery level visualization
-            const batteryPercentage = {{ battery_percentage|default(0) }};
-            const batteryLevel = document.getElementById('batteryLevel');
-
-            if (batteryPercentage > 0) {
-                batteryLevel.style.width = batteryPercentage + '%';
-                // Remove color classes if using consistent red
-                batteryLevel.className = 'battery-level';
-            }
+            document.querySelectorAll('input[type="range"]').forEach(updateSliderValue);
+            updateBattery({{ battery_percentage|default(0) }});
         });
 
         function showResetConfirmation() {
