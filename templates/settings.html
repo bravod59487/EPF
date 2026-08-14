@@ -214,6 +214,19 @@
             background-color: rgba(255, 255, 255, 0.15);
         }
 
+        /*
+         * The generic select:focus paints the form-field surface, which is
+         * near-white in light mode - on this dark header that would leave cream
+         * text on a white field. Two classes worth of specificity beats it
+         * regardless of source order.
+         */
+        .lang-switch select:focus {
+            background-color: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.45);
+            color: #f4f1e8;
+            box-shadow: none;
+        }
+
         .lang-switch select:focus-visible {
             outline: 2px solid rgba(255, 255, 255, 0.6);
             outline-offset: 2px;
