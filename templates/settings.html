@@ -347,7 +347,10 @@
             }
 
             #settingsForm .button-group {
+                /* spans both columns, so centre it rather than leaving it
+                   hanging off the left edge of a full-width row */
                 grid-column: 1 / -1;
+                justify-content: center;
             }
         }
 
