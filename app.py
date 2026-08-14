@@ -717,6 +717,21 @@ def inject_current_year():
     return {'current_year': datetime.now().year}
 
 @app.context_processor
+def inject_static_url():
+    """
+    static_url('css/settings.css') with the file's modification time appended, so
+    a browser cannot keep serving a stale stylesheet or script after an update.
+    """
+    def static_url(filename):
+        try:
+            version = int(os.path.getmtime(os.path.join(app.static_folder, filename)))
+        except OSError:
+            version = 0
+        return url_for('static', filename=filename, v=version)
+
+    return {'static_url': static_url}
+
+@app.context_processor
 def inject_current_photo():
     """ Expose the photo the frame is showing, or None before the first check-in """
     if not last_photo['asset_id']:
