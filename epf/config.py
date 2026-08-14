@@ -33,7 +33,13 @@ DEFAULT_CONFIG = {
         'sleep_end_hour': 6,            # Sleep end time 6:00 (6:00 AM)
         'sleep_end_minute': 0,
         'wakeup_interval': 60,          # Minutes
-    }
+    },
+    'notify': {
+        'enabled': False,               # Master switch
+        'channel': 'telegram',          # telegram/line
+        'battery_threshold': 20,        # Warn at or below this percentage
+        'min_interval_hours': 12,       # Never warn more often than this
+    },
 }
 
 # Deep-copied on purpose: a shallow copy would share the inner dict with
@@ -49,13 +55,22 @@ def immich():
     """ The live Immich settings. Read it per use, never cache the result. """
     return current['immich']
 
+def notify():
+    """ The live notification settings """
+    return current['notify']
+
+def sections():
+    """ The names of the configuration sections, in a stable order """
+    return list(DEFAULT_CONFIG.keys())
+
 def apply(new_config):
     """
     Adopt new settings, in place, so every module that read this dict sees them.
     Unknown keys are ignored and missing ones keep their current value.
     """
-    incoming = (new_config or {}).get('immich') or {}
-    current['immich'].update(incoming)
+    for section in DEFAULT_CONFIG:
+        incoming = (new_config or {}).get(section) or {}
+        current[section].update(incoming)
 
     settings = current['immich']
     print("Configuration updated: URL = {url}, Album = {album}, angle = {rotation}, "
@@ -63,13 +78,23 @@ def apply(new_config):
           "display_mode = {display_mode}, image_order = {image_order}".format(**settings))
 
 def read_file(path=CONFIG_PATH):
-    """ Load config.yaml, falling back to the defaults if it cannot be read """
+    """
+    Load config.yaml, falling back to the defaults if it cannot be read.
+
+    Sections added after a file was written are filled in from the defaults, so
+    an older config.yaml does not have to be edited by hand.
+    """
+    loaded = copy.deepcopy(DEFAULT_CONFIG)
     try:
         with open(path, 'r') as handle:
-            return yaml.safe_load(handle) or copy.deepcopy(DEFAULT_CONFIG)
+            stored = yaml.safe_load(handle) or {}
     except Exception as error:
         print(f"Error reading config file: {error}")
-        return copy.deepcopy(DEFAULT_CONFIG)
+        return loaded
+
+    for section in loaded:
+        loaded[section].update((stored.get(section) or {}))
+    return loaded
 
 def write_file(new_config, path=CONFIG_PATH):
     """ Persist settings. Raises, so the caller can report the failure. """

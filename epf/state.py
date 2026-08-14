@@ -28,6 +28,12 @@ next_photo = {
     'chosen_at': None,
 }
 
+# When the last low-battery warning went out. In memory, so a restart lets one
+# more through rather than needing another file on disk.
+notify = {
+    'last_sent': 0,
+}
+
 def clear_next_photo():
     """ Called once the asset has been handed over: it is no longer "next" """
     next_photo.update({'asset': None, 'album': None, 'album_id': None, 'chosen_at': None})

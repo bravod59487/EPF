@@ -641,6 +641,11 @@ select {
     font-variant-numeric: tabular-nums;
 }
 
+.notify-test {
+    margin-top: 1.2rem;
+    width: auto;
+}
+
 /* ---------- system log ---------- */
 
 .log-refresh {

@@ -332,6 +332,64 @@
                 </div>
             </div>
 
+            <div class="card">
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 15.5V10a6 6 0 1 0-12 0v5.5L4.5 18h15z" />
+                        <path d="M10 21h4" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.notify">Notifications</h2>
+                </div>
+                <div class="form-group">
+                    <label for="enabled" data-i18n="label.notifyEnabled">Low battery warnings:</label>
+                    <select id="enabled" name="enabled">
+                        <option value="false" data-i18n="switch.off" {% if not config['notify']['enabled']
+                            %}selected{% endif %}>Off</option>
+                        <option value="true" data-i18n="switch.on" {% if config['notify']['enabled']
+                            %}selected{% endif %}>On</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="channel" data-i18n="label.notifyChannel">Send through:</label>
+                    <select id="channel" name="channel">
+                        <option value="telegram" {% if config['notify']['channel']=='telegram'
+                            %}selected{% endif %}>Telegram</option>
+                        <option value="line" {% if config['notify']['channel']=='line'
+                            %}selected{% endif %}>LINE</option>
+                    </select>
+                    <div class="hint" data-i18n="hint.notifyCredentials">The bot token and chat id come from
+                        the environment, not from this page</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="battery_threshold" data-i18n="label.notifyThreshold">Warn at or below:</label>
+                    <select id="battery_threshold" name="battery_threshold">
+                        {% for level in [5, 10, 15, 20, 30, 40, 50] %}
+                        <option value="{{ level }}" {% if config['notify']['battery_threshold']==level
+                            %}selected{% endif %}>{{ level }}%</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="min_interval_hours" data-i18n="label.notifyInterval">At most once every:</label>
+                    <select id="min_interval_hours" name="min_interval_hours">
+                        {% for hours in [1, 3, 6, 12, 24] %}
+                        <option value="{{ hours }}" data-i18n="hours.{{ hours }}"
+                            {% if config['notify']['min_interval_hours']==hours %}selected{% endif %}>
+                            {{ hours }} h</option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint" data-i18n="hint.notifyInterval">The frame reports every wake-up, so
+                        without this a flat battery would message you all day</div>
+                </div>
+
+                <button type="button" class="reset-btn notify-test" onclick="testNotification()"
+                    data-i18n="btn.testNotify">Send a test</button>
+            </div>
+
             <div class="button-group">
                 <input type="submit" data-i18n-value="btn.save" value="Save Configuration">
                 <button type="button" class="reset-btn" data-i18n="btn.reset"

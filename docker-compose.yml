@@ -24,6 +24,13 @@ services:
       # the base image has no timezone set, so without this they are evaluated in
       # UTC and land at the wrong hours. Zone data is already in the image.
       TZ: ${TZ:-Asia/Taipei}
+      # Optional, for low battery notifications. Left empty unless set in .env;
+      # the settings page decides whether warnings are on, at what level and how
+      # often, but the credentials stay out here so the page never exposes them.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      LINE_CHANNEL_TOKEN: ${LINE_CHANNEL_TOKEN:-}
+      LINE_USER_ID: ${LINE_USER_ID:-}
     volumes:
       - ./config:/config
       - ./photos:/photos

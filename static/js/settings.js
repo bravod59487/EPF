@@ -127,6 +127,17 @@ function swapNextPhoto() {
     loadNext('POST');
 }
 
+function testNotification() {
+    fetch('notify/test', { method: 'POST', cache: 'no-store' })
+        .then(response => response.json().then(body => ({ ok: response.ok, body })))
+        .then(({ ok, body }) => {
+            showNotification(ok ? t('notify.testSent')
+                : t('notify.testFailed') + ' ' + (body.detail || body.error || ''));
+            loadLog();
+        })
+        .catch(() => showNotification(t('notify.testFailed')));
+}
+
 function clearLog() {
     fetch('log/clear', { method: 'POST', cache: 'no-store' })
         .then(() => loadLog())
@@ -304,6 +315,7 @@ const LOG_EVENTS = {
     settings_saved: 'event.settingsSaved',
     photo_swapped: 'event.photoSwapped',
     log_cleared: 'event.logCleared',
+    notified: 'event.notified',
     config_reloaded: 'event.configReloaded',
     tracking_reset: 'event.trackingReset',
     error: 'event.error',
@@ -442,9 +454,13 @@ function confirmReset() {
     // Reset settings to the server's defaults
     ['url', 'album', 'rotation', 'display_mode', 'image_order',
         'sleep_start_hour', 'sleep_start_minute',
-        'sleep_end_hour', 'sleep_end_minute', 'wakeup_interval'].forEach(id => {
+        'sleep_end_hour', 'sleep_end_minute', 'wakeup_interval',
+        'channel', 'battery_threshold', 'min_interval_hours'].forEach(id => {
             document.getElementById(id).value = String(DEFAULT_SETTINGS[id]);
         });
+
+    // Stored as a boolean, but presented as a two-option select
+    document.getElementById('enabled').value = DEFAULT_SETTINGS.enabled ? 'true' : 'false';
 
     ['enhanced', 'contrast', 'strength'].forEach(id => {
         const sliderElement = document.getElementById(id);

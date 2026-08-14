@@ -15,7 +15,8 @@ from datetime import datetime, timedelta
 import ntplib
 from flask import (Flask, jsonify, redirect, render_template, request, send_file,
                    url_for)
-from epf import battery, config, eventlog, imaging, immich, state, tracking
+from epf import (battery, config, eventlog, imaging, immich, notify, state,
+                 tracking)
 
 app = Flask(__name__)
 
@@ -62,6 +63,18 @@ def _no_store(response):
     response.headers['Cache-Control'] = 'no-store'
     return response
 
+def _flat_defaults():
+    """
+    Every default in one flat dict.
+
+    The page's reset button looks fields up by form-field name, which is unique
+    across the sections, so it does not need the nesting.
+    """
+    flat = {}
+    for values in config.DEFAULT_CONFIG.values():
+        flat.update(values)
+    return flat
+
 def _fresh_battery():
     """ The last reported voltage, or 0 once it is more than an hour old """
     if time.time() - state.battery['updated'] < 3600:
@@ -83,7 +96,7 @@ def settings():
     def render(error=None):
         return render_template('settings.html',
                                config=config.current,
-                               defaults=config.DEFAULT_CONFIG['immich'],
+                               defaults=_flat_defaults(),
                                battery_voltage=voltage,
                                battery_percentage=percentage,
                                error=error)
@@ -91,32 +104,47 @@ def settings():
     if request.method != 'POST':
         return render()
 
-    settings_now = config.immich()
+    # Field name -> how to read it. Anything absent is treated as text.
     number = {'rotation': int, 'enhanced': float, 'contrast': float, 'strength': float,
               'sleep_start_hour': int, 'sleep_start_minute': int,
-              'sleep_end_hour': int, 'sleep_end_minute': int, 'wakeup_interval': int}
+              'sleep_end_hour': int, 'sleep_end_minute': int, 'wakeup_interval': int,
+              'battery_threshold': int, 'min_interval_hours': int}
+    boolean = {'enabled'}
 
     submitted = {}
-    for key, previous in settings_now.items():
-        raw = request.form.get(key, previous)
-        try:
-            submitted[key] = number[key](raw) if key in number else raw
-        except (TypeError, ValueError):
-            return render(error=f"'{key}' is not a valid number")
+    for section in config.sections():
+        live = config.current[section]
+        submitted[section] = {}
+        for key, previous in live.items():
+            if key in boolean:
+                # A select rather than a checkbox, because an unchecked checkbox
+                # is simply absent from the form and would look like "unchanged"
+                submitted[section][key] = request.form.get(key, str(previous)) == 'true'
+                continue
+            raw = request.form.get(key, previous)
+            try:
+                submitted[section][key] = number[key](raw) if key in number else raw
+            except (TypeError, ValueError):
+                return render(error=f"'{key}' is not a valid number")
 
-    if submitted['rotation'] not in [0, 90, 180, 270]:
+    if submitted['immich']['rotation'] not in [0, 90, 180, 270]:
         return render(error="Rotation must be 0, 90, 180, or 270 degrees")
+    if submitted['notify']['channel'] not in notify.CHANNELS:
+        return render(error="Unknown notification channel")
 
     try:
-        config.write_file({'immich': submitted})
+        config.write_file(submitted)
     except Exception as error:
         return render(error=f"Error saving configuration: {error}")
 
     # Record only the fields that actually moved, so the log stays useful
-    changes = {key: [settings_now.get(key), value]
-               for key, value in submitted.items() if settings_now.get(key) != value}
+    changes = {}
+    for section, values in submitted.items():
+        for key, value in values.items():
+            if config.current[section].get(key) != value:
+                changes[key] = [config.current[section].get(key), value]
 
-    config.apply({'immich': submitted})
+    config.apply(submitted)
     eventlog.record('settings_saved', ip=eventlog.client_ip(), changes=changes or None)
 
     return redirect(url_for('settings'))
@@ -173,6 +201,18 @@ def read_log():
     except ValueError:
         limit = 50
     return _no_store(jsonify({'entries': eventlog.recent(limit)}))
+
+@app.route('/notify/test', methods=['POST'])
+def test_notification():
+    """ Send a message now, so the setup can be verified before it matters """
+    try:
+        notify.send("E-paper frame: test notification")
+    except notify.NotifyError as error:
+        eventlog.record('error', where='notify', message=error.code, detail=error.detail)
+        return _no_store(jsonify({"error": error.code, "detail": error.detail})), 502
+
+    eventlog.record('notified', channel=config.notify()['channel'], reason='test')
+    return _no_store(jsonify({'sent': True}))
 
 @app.route('/log/clear', methods=['POST'])
 def clear_log():
@@ -309,6 +349,11 @@ def process_and_download():
                         mac=request.headers.get('X-Device-Mac'),
                         rssi=request.headers.get('X-Device-Rssi'),
                         agent=request.headers.get('User-Agent'))
+
+        if reported_mv:
+            # Sent on a thread: the frame gives up after 50 seconds and must not
+            # wait on Telegram or LINE
+            notify.check_battery(battery.percentage(reported_mv), reported_mv)
 
         return response
 
