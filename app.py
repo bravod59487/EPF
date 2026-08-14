@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import threading
+import json
 from cpy import  convert_image, load_scaled
 import ntplib
 import time
@@ -100,6 +101,47 @@ last_photo = {
     'preview_png': None,  # the dithered 800x480 image, exactly as sent to the panel
 }
 
+# Rolling record of what the frame asked for and what changed on the server.
+# Lives beside tracking.txt so the same mount that keeps the settings keeps the
+# history; trimmed by size so it can never fill the volume.
+log_file = os.path.join(photodir, 'events.jsonl')
+log_lock = threading.Lock()
+LOG_MAX_ENTRIES = 2000
+LOG_TRIM_BYTES = 1000000
+
+def _trim_log():
+    """ Drop the oldest entries. Caller must hold log_lock. """
+    with open(log_file, 'r', encoding='utf-8') as handle:
+        lines = handle.readlines()
+    temporary = log_file + '.tmp'
+    with open(temporary, 'w', encoding='utf-8') as handle:
+        handle.writelines(lines[-LOG_MAX_ENTRIES:])
+    os.replace(temporary, log_file)
+
+def log_event(event, **fields):
+    """
+    Append one event. Never raises: losing a log line must not fail a request,
+    least of all the device's download.
+    """
+    entry = {'ts': datetime.now().isoformat(timespec='seconds'), 'event': event}
+    entry.update({key: value for key, value in fields.items() if value is not None})
+    try:
+        line = json.dumps(entry, ensure_ascii=False)
+        # Flask's server is threaded, so the device and a browser can write at
+        # the same moment; tracking.txt has no such guard, this one does.
+        with log_lock:
+            with open(log_file, 'a', encoding='utf-8') as handle:
+                handle.write(line + '\n')
+            if os.path.getsize(log_file) > LOG_TRIM_BYTES:
+                _trim_log()
+    except Exception as error:
+        print(f"Could not write event log: {error}")
+
+def client_ip():
+    """ The caller's address, honouring a proxy header when one is present """
+    forwarded = request.headers.get('X-Forwarded-For', '')
+    return forwarded.split(',')[0].strip() if forwarded else request.remote_addr
+
 def load_downloaded_images():
     """ Load downloaded image ID from tracking.txt """
     global albumname
@@ -160,8 +202,9 @@ def save_downloaded_image(asset_id):
     except Exception as e:
         print(f"Unexpected error writing to tracking file: {e}")
 
-def reset_tracking_file():
+def reset_tracking_file(reason=None):
     """Reset tracking.txt file"""
+    log_event('tracking_reset', reason=reason)
     try:
         open(tracking_file, 'w').close()
     except Exception as e:
@@ -453,6 +496,7 @@ class ConfigFileHandler(FileSystemEventHandler):
     def on_modified(self, event):
         if event.src_path == self.config_path:
             print("File modification detected, reloading configuration...")
+            log_event('config_reloaded', source='file')
             new_config = self.load_config()
             # Use callback function to update configuration
             self.config_update_callback(new_config)
@@ -642,6 +686,30 @@ def status():
 
     return _no_store(jsonify({'immich': immich, 'frame': frame, 'battery': battery}))
 
+@app.route('/log')
+def read_log():
+    """ Recent events, newest first """
+    try:
+        limit = min(max(int(request.args.get('limit', 50)), 1), 500)
+    except ValueError:
+        limit = 50
+
+    entries = []
+    try:
+        with log_lock:
+            with open(log_file, 'r', encoding='utf-8') as handle:
+                lines = handle.readlines()[-limit:]
+        for line in lines:
+            try:
+                entries.append(json.loads(line))
+            except ValueError:
+                continue  # a torn final line is not worth failing over
+    except FileNotFoundError:
+        pass
+
+    entries.reverse()
+    return _no_store(jsonify({'entries': entries}))
+
 @app.route('/preview')
 def preview_current():
     """ The dithered image currently on the panel """
@@ -728,9 +796,17 @@ def settings():
             with open(config_path, 'w') as file:
                 yaml.safe_dump(new_config, file)
             
+            # Record only the fields that actually moved, so the log stays useful
+            previous = current_config.get('immich', {})
+            changes = {key: [previous.get(key), value]
+                       for key, value in new_config['immich'].items()
+                       if previous.get(key) != value}
+
             # Update current configuration
             update_app_config(new_config)
-            
+
+            log_event('settings_saved', ip=client_ip(), changes=changes or None)
+
             return redirect(url_for('settings'))
         
         except Exception as e:
@@ -785,6 +861,8 @@ def main():
         initial_config = ConfigFileHandler(config_path, update_app_config).config
         update_app_config(initial_config)
         
+        log_event('startup')
+
         # Start daily NTP sync thread
         ntp_sync_thread = threading.Thread(target=run_daily_ntp_sync, daemon=True)
         ntp_sync_thread.start()
@@ -800,14 +878,16 @@ def process_and_download():
     
     global url, albumname, last_battery_voltage, last_battery_update
     
-    # Update battery information when received
+    # Update battery information when received. Kept in its own variable because
+    # battery_voltage below is reassigned to the raw header string.
+    reported_mv = 0
     try:
-        battery_voltage = float(request.headers.get('batteryCap', '0'))
-        if battery_voltage > 0:
-            last_battery_voltage = battery_voltage
+        reported_mv = float(request.headers.get('batteryCap', '0'))
+        if reported_mv > 0:
+            last_battery_voltage = reported_mv
             last_battery_update = time.time()
     except (TypeError, ValueError):
-        pass
+        reported_mv = 0
     
     # Use current global configuration
     current_url = url
@@ -819,6 +899,7 @@ def process_and_download():
     try:
         # Check if url and albumname are valid
         if not current_url or not current_albumname:
+            log_event('error', where='download', message="Immich URL or Album not configured", ip=client_ip())
             return jsonify({"error": "Immich URL or Album not configured"}), 500
             
         # Load list of downloaded images
@@ -827,12 +908,14 @@ def process_and_download():
         # Get album list
         response = requests.get(f"{current_url}/api/albums", headers=headers)
         if response.status_code != 200:
+            log_event('error', where='download', message="Failed to fetch albums", ip=client_ip())
             return jsonify({"error": "Failed to fetch albums"}), 500
         
         # Find specified album
         data = response.json()
         albumid = next((item['id'] for item in data if item['albumName'] == current_albumname), None)
         if not albumid:
+            log_event('error', where='download', message="Album not found", ip=client_ip())
             return jsonify({"error": "Album not found"}), 404
 
         # Get photos in the album
@@ -850,6 +933,7 @@ def process_and_download():
             }
             response = requests.post(f"{url}/api/search/metadata", headers=headers, json=search_body)
             if response.status_code != 200:
+                log_event('error', where='download', message="Failed to fetch album details", ip=client_ip())
                 return jsonify({"error": "Failed to fetch album details"}), 500
 
             search_result = response.json().get('assets', {})
@@ -861,6 +945,7 @@ def process_and_download():
             page = int(next_page)
 
         if not album_assets:
+            log_event('error', where='download', message="No images found in album", ip=client_ip())
             return jsonify({"error": "No images found in album"}), 404
 
         # Keep the same downstream shape as the previous album-details response
@@ -877,7 +962,7 @@ def process_and_download():
             # Reset tracking file if it's empty or latest photo is not in downloaded list
             downloaded_images = load_downloaded_images()
             if not downloaded_images or latest_id not in downloaded_images:
-                reset_tracking_file()
+                reset_tracking_file(reason='newer_photo')
                 # Sort photos by capture time
                 sorted_assets = sorted(data['assets'], 
                                     key=lambda x: x.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00'),
@@ -891,7 +976,7 @@ def process_and_download():
         else:  # random order
             remaining_images = [img for img in data['assets'] if img['id'] not in downloaded_images]
             if not remaining_images:
-                reset_tracking_file()
+                reset_tracking_file(reason='album_exhausted')
                 remaining_images = data['assets']
 
         # Select photo
@@ -904,6 +989,7 @@ def process_and_download():
         # Download image to memory
         response = requests.get(f"{url}/api/assets/{asset_id}/original", headers=headers, stream=True)
         if response.status_code != 200:
+            log_event('error', where='download', message="Failed to download image", ip=client_ip())
             return jsonify({"error": "Failed to download image"}), 500
 
         # Process image in memory
@@ -953,9 +1039,20 @@ def process_and_download():
         )
         response.headers['X-Photo-Url'] = photo_url
         print(f"Setting X-Photo-Url header: {photo_url}")
+
+        # MAC and signal strength are only here if the firmware sends them; HTTP
+        # carries no MAC of its own and the container cannot see the LAN's ARP table.
+        log_event('checkin', ip=client_ip(), asset_id=asset_id, album=current_albumname,
+                  battery_mv=int(reported_mv) if reported_mv else None,
+                  battery_pct=calculate_battery_percentage(reported_mv) if reported_mv else None,
+                  mac=request.headers.get('X-Device-Mac'),
+                  rssi=request.headers.get('X-Device-Rssi'),
+                  agent=request.headers.get('User-Agent'))
+
         return response
 
     except Exception as e:
+        log_event('error', where='download', message=str(e), ip=client_ip())
         return jsonify({"error": str(e)}), 500
 
 @app.route('/sleep', methods=['GET'])
@@ -1028,6 +1125,9 @@ def get_sleep_duration():
             next_wakeup = sleep_end
         sleep_ms = int((next_wakeup - current_time).total_seconds() * 1000)
     
+    log_event('sleep', ip=client_ip(), seconds=sleep_ms // 1000,
+              next_wakeup=next_wakeup.strftime("%Y-%m-%d %H:%M"))
+
     return jsonify({
         "current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
         "next_wakeup": next_wakeup.strftime("%Y-%m-%d %H:%M:%S"),

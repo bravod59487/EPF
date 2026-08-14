@@ -328,6 +328,12 @@
             max-width: 1180px;
             margin: 0 auto;
             padding: 2rem 1.5rem 1rem;
+            /* Spaces the error banner, preview, form, log and footer evenly.
+               Cards carry no margin of their own, so this is what separates
+               the ones that sit outside the form's own grid. */
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
         }
 
         /*
@@ -645,6 +651,95 @@
             }
         }
 
+        /* ---------- system log ---------- */
+
+        .log-refresh {
+            /* pushed to the far end of the card heading */
+            margin-left: auto;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            border: 1px solid var(--line-strong);
+            color: var(--ink-2);
+        }
+
+        .log-refresh:hover {
+            background-color: var(--surface-2);
+            color: var(--ink);
+        }
+
+        .log-refresh svg {
+            width: 15px;
+            height: 15px;
+        }
+
+        .log-body {
+            max-height: 22rem;
+            overflow-y: auto;
+        }
+
+        .log-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: baseline;
+            gap: 0.3rem 0.7rem;
+            padding: 0.45rem 0;
+            border-top: 1px solid var(--line);
+            font-size: 0.85rem;
+        }
+
+        .log-row:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .log-time {
+            color: var(--ink-3);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        .log-tag {
+            padding: 0.05rem 0.45rem;
+            border-radius: 5px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            white-space: nowrap;
+            background-color: var(--surface-2);
+            color: var(--ink-2);
+            border: 1px solid var(--line);
+        }
+
+        .log-row[data-event="checkin"] .log-tag {
+            color: var(--accent-2);
+            border-color: var(--accent);
+        }
+
+        .log-row[data-event="settings_saved"] .log-tag {
+            color: var(--moss);
+            border-color: var(--moss);
+        }
+
+        .log-row[data-event="error"] .log-tag {
+            color: var(--clay);
+            border-color: var(--clay);
+        }
+
+        .log-detail {
+            color: var(--ink-2);
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .log-note {
+            color: var(--ink-3);
+            font-size: 0.85rem;
+        }
+
         /* ---------- buttons ---------- */
 
         .button-group {
@@ -707,7 +802,6 @@
             border-left-width: 3px;
             padding: 0.9rem 1.1rem;
             border-radius: var(--radius-sm);
-            margin-bottom: 1.25rem;
             font-size: 0.92rem;
         }
 
@@ -1122,6 +1216,26 @@
             </div>
         </form>
 
+        <div class="card log-card">
+            <div class="card-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M5 3.5h14v17H5z" />
+                    <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+                </svg>
+                <h2 class="card-title" data-i18n="card.log">System Log</h2>
+                <button type="button" class="log-refresh" onclick="loadLog()" data-i18n-title="log.refresh"
+                    title="Refresh" data-i18n-aria-label="log.refresh" aria-label="Refresh">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+                        <path d="M20 5v6h-6" />
+                    </svg>
+                </button>
+            </div>
+            <div class="log-body" id="logBody"></div>
+        </div>
+
         <footer>
             <span data-i18n="footer.name">E-paper Photo Frame</span> &copy; {{ current_year }}
         </footer>
@@ -1158,7 +1272,18 @@
                 'photo.originalFailed': 'Could not load the original from Immich',
                 'status.immich': 'Immich',
                 'status.frame': 'Frame',
-                'status.checking': 'Checking…',
+                                'card.log': 'System Log',
+                'log.refresh': 'Refresh',
+                'log.empty': 'Nothing recorded yet',
+                'log.failed': 'Could not load the log',
+                'event.checkin': 'Frame checked in',
+                'event.sleep': 'Sleep scheduled',
+                'event.settingsSaved': 'Settings saved',
+                'event.configReloaded': 'Config reloaded from disk',
+                'event.trackingReset': 'Photo history reset',
+                'event.error': 'Error',
+                'event.startup': 'Server started',
+'status.checking': 'Checking…',
                 'status.connected': 'Connected',
                 'status.albumMissing': 'Album not found',
                 'status.unauthorized': 'API key rejected',
@@ -1229,7 +1354,18 @@
                 'photo.originalFailed': '無法從 Immich 載入原圖',
                 'status.immich': 'Immich',
                 'status.frame': '相框',
-                'status.checking': '檢查中…',
+                                'card.log': '系統紀錄',
+                'log.refresh': '重新整理',
+                'log.empty': '尚無紀錄',
+                'log.failed': '無法載入紀錄',
+                'event.checkin': '相框回報',
+                'event.sleep': '安排睡眠',
+                'event.settingsSaved': '儲存設定',
+                'event.configReloaded': '重新載入設定檔',
+                'event.trackingReset': '重置播放紀錄',
+                'event.error': '錯誤',
+                'event.startup': '伺服器啟動',
+'status.checking': '檢查中…',
                 'status.connected': '已連線',
                 'status.albumMissing': '找不到相簿',
                 'status.unauthorized': 'API 金鑰被拒絕',
@@ -1300,7 +1436,18 @@
                 'photo.originalFailed': '无法从 Immich 加载原图',
                 'status.immich': 'Immich',
                 'status.frame': '相框',
-                'status.checking': '检查中…',
+                                'card.log': '系统日志',
+                'log.refresh': '刷新',
+                'log.empty': '暂无记录',
+                'log.failed': '无法加载日志',
+                'event.checkin': '相框回报',
+                'event.sleep': '安排睡眠',
+                'event.settingsSaved': '保存设置',
+                'event.configReloaded': '重新加载配置文件',
+                'event.trackingReset': '重置播放记录',
+                'event.error': '错误',
+                'event.startup': '服务器启动',
+'status.checking': '检查中…',
                 'status.connected': '已连接',
                 'status.albumMissing': '找不到相册',
                 'status.unauthorized': 'API 密钥被拒绝',
@@ -1371,7 +1518,18 @@
                 'photo.originalFailed': 'Immich から元画像を読み込めませんでした',
                 'status.immich': 'Immich',
                 'status.frame': 'フレーム',
-                'status.checking': '確認中…',
+                                'card.log': 'システムログ',
+                'log.refresh': '再読み込み',
+                'log.empty': '記録はまだありません',
+                'log.failed': 'ログを読み込めません',
+                'event.checkin': 'フレームから通信',
+                'event.sleep': 'スリープ設定',
+                'event.settingsSaved': '設定を保存',
+                'event.configReloaded': '設定ファイルを再読み込み',
+                'event.trackingReset': '表示履歴をリセット',
+                'event.error': 'エラー',
+                'event.startup': 'サーバー起動',
+'status.checking': '確認中…',
                 'status.connected': '接続済み',
                 'status.albumMissing': 'アルバムが見つかりません',
                 'status.unauthorized': 'API キーが拒否されました',
@@ -1511,8 +1669,10 @@
                 el.setAttribute('title', t(el.dataset.i18nTitle));
             });
 
-            // Header status text is generated, not marked up, so redo it by hand
+            // Header status and log rows are generated rather than marked up,
+            // so redo them by hand instead of leaving text in the old language
             renderStatus();
+            renderLog();
         }
 
         // Swap the preview between the dithered panel image and the Immich original
@@ -1689,6 +1849,110 @@
             updateBatteryChip(lastStatus.battery.percentage);
         }
 
+        /*
+         * System log. Rows are built with createElement rather than innerHTML,
+         * because album names, IP addresses and error text all come from outside.
+         */
+        const LOG_EVENTS = {
+            checkin: 'event.checkin',
+            sleep: 'event.sleep',
+            settings_saved: 'event.settingsSaved',
+            config_reloaded: 'event.configReloaded',
+            tracking_reset: 'event.trackingReset',
+            error: 'event.error',
+            startup: 'event.startup',
+        };
+        let logEntries = null;
+
+        function logDetail(entry) {
+            const parts = [];
+            if (entry.event === 'checkin') {
+                if (typeof entry.battery_pct === 'number') {
+                    parts.push(entry.battery_pct.toFixed(1) + '%');
+                }
+                if (entry.battery_mv) {
+                    parts.push(entry.battery_mv + ' mV');
+                }
+                if (entry.album) {
+                    parts.push(entry.album);
+                }
+                if (entry.ip) {
+                    parts.push(entry.ip);
+                }
+                if (entry.mac) {
+                    parts.push(entry.mac);
+                }
+                if (entry.rssi) {
+                    parts.push(entry.rssi + ' dBm');
+                }
+            } else if (entry.event === 'sleep') {
+                if (entry.seconds) {
+                    parts.push(Math.round(entry.seconds / 60) + ' min');
+                }
+                if (entry.next_wakeup) {
+                    parts.push(entry.next_wakeup);
+                }
+            } else if (entry.event === 'settings_saved') {
+                if (entry.changes) {
+                    parts.push(Object.keys(entry.changes)
+                        .map(key => key + ': ' + entry.changes[key][0] + ' \u2192 ' + entry.changes[key][1])
+                        .join(', '));
+                }
+                if (entry.ip) {
+                    parts.push(entry.ip);
+                }
+            } else if (entry.event === 'tracking_reset' && entry.reason) {
+                parts.push(entry.reason);
+            } else if (entry.event === 'error' && entry.message) {
+                parts.push(entry.message);
+            }
+            return parts.join(' \u00b7 ');
+        }
+
+        function renderLog() {
+            const body = document.getElementById('logBody');
+            body.textContent = '';
+
+            if (logEntries === null || logEntries === 'failed' || !logEntries.length) {
+                const note = document.createElement('p');
+                note.className = 'log-note';
+                note.textContent = t(logEntries === 'failed' ? 'log.failed'
+                    : logEntries === null ? 'status.checking' : 'log.empty');
+                body.appendChild(note);
+                return;
+            }
+
+            logEntries.forEach(entry => {
+                const row = document.createElement('div');
+                row.className = 'log-row';
+                row.dataset.event = entry.event;
+
+                const time = document.createElement('span');
+                time.className = 'log-time';
+                // 2026-08-14T11:30:02 -> 08-14 11:30
+                time.textContent = (entry.ts || '').slice(5, 16).replace('T', ' ');
+
+                const tag = document.createElement('span');
+                tag.className = 'log-tag';
+                tag.textContent = LOG_EVENTS[entry.event] ? t(LOG_EVENTS[entry.event]) : entry.event;
+
+                const detail = document.createElement('span');
+                detail.className = 'log-detail';
+                detail.textContent = logDetail(entry);
+
+                row.append(time, tag, detail);
+                body.appendChild(row);
+            });
+        }
+
+        function loadLog() {
+            fetch('{{ url_for("read_log") }}?limit=60', { cache: 'no-store' })
+                .then(response => response.ok ? response.json() : Promise.reject(new Error(response.status)))
+                .then(payload => { logEntries = payload.entries; })
+                .catch(() => { logEntries = 'failed'; })
+                .then(renderLog);
+        }
+
         function fetchStatus() {
             fetch('{{ url_for("status") }}', { cache: 'no-store' })
                 .then(response => response.ok ? response.json() : Promise.reject(new Error(response.status)))
@@ -1713,6 +1977,7 @@
 
             document.querySelectorAll('input[type="range"]').forEach(updateSliderValue);
             fetchStatus();
+            loadLog();
 
             // The panel image is served from memory and cannot really fail, so an
             // error means Immich would not give us the original. Say so and fall back.
