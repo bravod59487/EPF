@@ -150,6 +150,12 @@ function renderChannels() {
         const state = tile.querySelector('.channel-state');
         state.dataset.i18n = info.bound ? 'bind.bound' : 'bind.unbound';
         state.textContent = t(state.dataset.i18n);
+
+        // Warnings cannot go to a service that is not linked
+        const use = document.getElementById('use_' + channel);
+        if (use) {
+            use.disabled = !info.bound;
+        }
     });
 
     // Warnings have nowhere to go until something is linked
@@ -602,6 +608,11 @@ function confirmReset() {
 
     // Stored as a boolean, but presented as a two-option select
     document.getElementById('enabled').value = DEFAULT_SETTINGS.enabled ? 'true' : 'false';
+
+    // Tick boxes carry their state in .checked, not .value
+    ['use_telegram', 'use_line'].forEach(id => {
+        document.getElementById(id).checked = !!DEFAULT_SETTINGS[id];
+    });
 
     ['enhanced', 'contrast', 'strength'].forEach(id => {
         const sliderElement = document.getElementById(id);

@@ -647,6 +647,40 @@ select {
     flex-wrap: wrap;
 }
 
+.channel-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.channel-use {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    cursor: pointer;
+}
+
+.channel-use input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* Nothing can be sent to a service that is not linked */
+.channel-use input:disabled {
+    cursor: not-allowed;
+}
+
+.channel-use input:disabled + span {
+    color: var(--ink-3);
+    opacity: 0.6;
+}
+
 .channel-tile {
     display: flex;
     flex-direction: column;

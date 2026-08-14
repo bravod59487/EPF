@@ -110,12 +110,18 @@ def settings():
               'sleep_end_hour': int, 'sleep_end_minute': int, 'wakeup_interval': int,
               'battery_threshold': int, 'min_interval_hours': int}
     boolean = {'enabled'}
+    # Tick boxes: an unticked box is simply absent from the form, so its absence
+    # has to mean False rather than "unchanged"
+    checkbox = {'use_telegram', 'use_line'}
 
     submitted = {}
     for section in config.sections():
         live = config.current[section]
         submitted[section] = {}
         for key, previous in live.items():
+            if key in checkbox:
+                submitted[section][key] = key in request.form
+                continue
             if key in boolean:
                 # A select rather than a checkbox, because an unchecked checkbox
                 # is simply absent from the form and would look like "unchanged"
@@ -250,8 +256,13 @@ def notification_channels():
 
 @app.route('/notify/test', methods=['POST'])
 def test_notification():
-    """ Send to every bound channel, so a working setup can be re-checked """
-    channels = notify.bound_channels()
+    """
+    Send where a real warning would go, so the test proves the actual path.
+
+    That means linked and ticked, not merely linked: testing a service the page
+    has unticked would be reporting on something that will never be used.
+    """
+    channels = notify.send_channels()
     if not channels:
         return _no_store(jsonify({"error": "not_configured", "detail": "no channel bound"})), 400
 

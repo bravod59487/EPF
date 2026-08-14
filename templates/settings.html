@@ -354,21 +354,36 @@
                 <div class="form-group">
                     <label data-i18n="label.notifyChannel">Send through:</label>
                     <div class="channel-tiles">
-                        <button type="button" class="channel-tile" id="tile-telegram"
-                            data-channel="telegram" onclick="openBinding('telegram')">
-                            <img src="{{ static_url('icons/telegram.png') }}" alt="Telegram">
-                            <span class="channel-name">Telegram</span>
-                            <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
-                        </button>
-                        <button type="button" class="channel-tile" id="tile-line"
-                            data-channel="line" onclick="openBinding('line')">
-                            <img src="{{ static_url('icons/line.png') }}" alt="LINE">
-                            <span class="channel-name">LINE</span>
-                            <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
-                        </button>
+                        <div class="channel-slot">
+                            <button type="button" class="channel-tile" id="tile-telegram"
+                                data-channel="telegram" onclick="openBinding('telegram')">
+                                <img src="{{ static_url('icons/telegram.png') }}" alt="Telegram">
+                                <span class="channel-name">Telegram</span>
+                                <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                            </button>
+                            <label class="channel-use" for="use_telegram">
+                                <input type="checkbox" id="use_telegram" name="use_telegram"
+                                    {% if config['notify']['use_telegram'] %}checked{% endif %}>
+                                <span data-i18n="bind.use">Send warnings</span>
+                            </label>
+                        </div>
+                        <div class="channel-slot">
+                            <button type="button" class="channel-tile" id="tile-line"
+                                data-channel="line" onclick="openBinding('line')">
+                                <img src="{{ static_url('icons/line.png') }}" alt="LINE">
+                                <span class="channel-name">LINE</span>
+                                <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                            </button>
+                            <label class="channel-use" for="use_line">
+                                <input type="checkbox" id="use_line" name="use_line"
+                                    {% if config['notify']['use_line'] %}checked{% endif %}>
+                                <span data-i18n="bind.use">Send warnings</span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="hint" data-i18n="hint.notifyCredentials">Warnings go to every linked
-                        service. Linking only succeeds once a test message arrives.</div>
+                    <div class="hint" data-i18n="hint.notifyCredentials">Click a service to link it;
+                        linking only succeeds once a test message arrives. Warnings go to the ticked
+                        ones, so linking both does not mean messaging both.</div>
                 </div>
 
                 <div class="form-group">

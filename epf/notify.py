@@ -74,8 +74,19 @@ def send(text, channel, values=None):
         raise NotifyError('unreachable', str(error))
 
 def bound_channels():
-    """ The channels a message can actually be delivered to """
+    """ The channels whose credentials have been proved to work """
     return [channel for channel, info in credentials.summary().items() if info['bound']]
+
+def send_channels():
+    """
+    Where a warning would actually go: linked, and ticked on the settings page.
+
+    Kept separate from bound_channels() so that linking two services does not
+    force both to be messaged.
+    """
+    settings = config.notify()
+    return [channel for channel in bound_channels()
+            if settings.get('use_' + channel, True)]
 
 def send_in_background(text, event='notified', **fields):
     """
@@ -85,7 +96,7 @@ def send_in_background(text, event='notified', **fields):
     slow or unreachable notification service must not sit in that request.
     """
     def run():
-        for channel in bound_channels():
+        for channel in send_channels():
             try:
                 send(text, channel)
                 eventlog.record(event, channel=channel, **fields)
@@ -106,7 +117,7 @@ def check_battery(percentage, voltage):
     settings = config.notify()
     if not settings['enabled'] or percentage is None:
         return False
-    if not bound_channels():
+    if not send_channels():
         return False
 
     threshold = float(settings['battery_threshold'])

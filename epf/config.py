@@ -38,6 +38,10 @@ DEFAULT_CONFIG = {
         'enabled': False,               # Master switch
         'battery_threshold': 20,        # Warn at or below this percentage
         'min_interval_hours': 12,       # Never warn more often than this
+        # Which linked services actually receive warnings. On by default, so
+        # linking one is enough; untick to leave a linked service out.
+        'use_telegram': True,
+        'use_line': True,
     },
 }
 
