@@ -100,9 +100,9 @@ function applyTranslations() {
  * this can show it; swapping asks the server to pick a different one.
  */
 function renderNext(info) {
-    const card = document.getElementById('nextCard');
+    const slot = document.getElementById('nextSlot');
     if (!info || !info.asset_id) {
-        card.hidden = true;
+        slot.hidden = true;
         return;
     }
     document.getElementById('nextLink').href = info.link;
@@ -110,7 +110,10 @@ function renderNext(info) {
     document.getElementById('nextChosen').textContent = info.chosen_at || '';
     // The URL is stable, so a swap needs a cache-buster to actually reload
     document.getElementById('nextPreview').src = 'preview/next?t=' + Date.now();
-    card.hidden = false;
+    slot.hidden = false;
+    // The card starts hidden when the frame has not been sent a photo yet; a
+    // chosen next photo is reason enough to reveal it.
+    document.getElementById('photoCard').hidden = false;
 }
 
 function loadNext(method) {

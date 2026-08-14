@@ -543,17 +543,32 @@ select {
 
 /* Side by side once there is room, so a full-width card does not turn the
    preview into a giant banner */
-.photo-body {
+/* Current and next sit side by side once there is room, stacked on phones */
+.photo-pair {
     display: grid;
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
 @media (min-width: 720px) {
-    .photo-body {
-        grid-template-columns: minmax(0, 420px) 1fr;
-        align-items: center;
+    .photo-pair {
+        grid-template-columns: 1fr 1fr;
         gap: 1.5rem;
     }
+}
+
+.photo-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.photo-label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-3);
 }
 
 .photo-link {
@@ -577,14 +592,6 @@ select {
     object-fit: contain;
 }
 
-.photo-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.9rem;
-    flex-wrap: wrap;
-}
 
 .segmented {
     display: inline-flex;
@@ -632,16 +639,6 @@ select {
     font-size: 0.82rem;
     color: var(--ink-3);
     font-variant-numeric: tabular-nums;
-}
-
-@media (min-width: 720px) {
-    .photo-meta {
-        margin-top: 0;
-        flex-direction: column;
-        align-items: flex-start;
-        justify-content: center;
-        gap: 0.9rem;
-    }
 }
 
 /* ---------- system log ---------- */
