@@ -1,23 +1,22 @@
 """
 Push notifications for a low battery.
 
-Credentials come from the environment, not config.yaml, for the same reason
-IMMICH_API_KEY does: the settings page has no authentication, so anything stored
-in the config would be readable by anyone who can reach the page.
+Credentials live in a file next to config.yaml (see credentials.py), not in the
+environment, so a token can be changed without recreating the container. They are
+never rendered into the settings page.
 
-  Telegram   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-  LINE       LINE_CHANNEL_TOKEN, LINE_USER_ID
+A warning goes to every channel that has been bound, where bound means a test
+message actually got through.
 
 LINE needs the Messaging API: LINE Notify, which took a single token, was
 discontinued in 2025.
 """
-import os
 import threading
 import time
 
 import requests
 
-from . import config, eventlog, state
+from . import config, credentials, eventlog, state
 
 CHANNELS = ('telegram', 'line')
 
@@ -29,24 +28,22 @@ class NotifyError(Exception):
         self.code = code
         self.detail = detail
 
-def _telegram(text):
-    token = os.getenv('TELEGRAM_BOT_TOKEN')
-    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+def _telegram(text, values):
+    token = values.get('bot_token')
+    chat_id = values.get('chat_id')
     if not token or not chat_id:
-        raise NotifyError('not_configured',
-                          'TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID must both be set')
+        raise NotifyError('not_configured', 'A bot token and a chat id are both needed')
 
     response = requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
                              json={'chat_id': chat_id, 'text': text}, timeout=10)
     if response.status_code != 200:
         raise NotifyError('rejected', f"Telegram returned {response.status_code}")
 
-def _line(text):
-    token = os.getenv('LINE_CHANNEL_TOKEN')
-    user_id = os.getenv('LINE_USER_ID')
+def _line(text, values):
+    token = values.get('channel_token')
+    user_id = values.get('user_id')
     if not token or not user_id:
-        raise NotifyError('not_configured',
-                          'LINE_CHANNEL_TOKEN and LINE_USER_ID must both be set')
+        raise NotifyError('not_configured', 'A channel token and a user id are both needed')
 
     response = requests.post("https://api.line.me/v2/bot/message/push",
                              headers={'Authorization': f"Bearer {token}"},
@@ -58,39 +55,43 @@ def _line(text):
 
 SENDERS = {'telegram': _telegram, 'line': _line}
 
-def send(text, channel=None):
+def send(text, channel, values=None):
     """
-    Push one message. Raises NotifyError.
+    Push one message over one channel. Raises NotifyError.
 
-    The channel defaults to the saved setting, but can be overridden so the test
-    button can try whatever is selected on the page before it has been saved.
+    `values` lets a binding attempt use credentials that have not been saved yet,
+    which is how a test can run before anything is stored.
     """
-    channel = channel or config.notify()['channel']
     sender = SENDERS.get(channel)
     if not sender:
         raise NotifyError('unknown_channel', channel)
 
     try:
-        sender(text)
+        sender(text, values if values is not None else credentials.get(channel))
     except NotifyError:
         raise
     except requests.RequestException as error:
         raise NotifyError('unreachable', str(error))
 
+def bound_channels():
+    """ The channels a message can actually be delivered to """
+    return [channel for channel, info in credentials.summary().items() if info['bound']]
+
 def send_in_background(text, event='notified', **fields):
     """
-    Send without holding up the caller.
+    Send to every bound channel without holding up the caller.
 
     This is called from /download, and the frame gives up after 50 seconds, so a
     slow or unreachable notification service must not sit in that request.
     """
     def run():
-        try:
-            send(text)
-            eventlog.record(event, channel=config.notify()['channel'], **fields)
-        except NotifyError as error:
-            eventlog.record('error', where='notify', message=error.code,
-                            detail=error.detail)
+        for channel in bound_channels():
+            try:
+                send(text, channel)
+                eventlog.record(event, channel=channel, **fields)
+            except NotifyError as error:
+                eventlog.record('error', where='notify', message=error.code,
+                                detail=error.detail, channel=channel)
 
     threading.Thread(target=run, daemon=True).start()
 
@@ -104,6 +105,8 @@ def check_battery(percentage, voltage):
     """
     settings = config.notify()
     if not settings['enabled'] or percentage is None:
+        return False
+    if not bound_channels():
         return False
 
     threshold = float(settings['battery_threshold'])

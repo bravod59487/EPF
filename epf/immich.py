@@ -141,6 +141,20 @@ def check_health():
 def _taken_at(asset):
     return asset.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00')
 
+def taken_at_text(asset):
+    """
+    When the photo was taken, for display. Empty when Immich has no EXIF date.
+
+    Already fetched: list_album_assets asks withExif, and 'newest' ordering sorts
+    on this very field.
+    """
+    raw = (asset or {}).get('exifInfo', {}).get('dateTimeOriginal')
+    if not raw:
+        return ''
+    # 2019-08-14T10:23:45.000+08:00 -> 2019-08-14 10:23
+    text = str(raw)
+    return text[:16].replace('T', ' ') if len(text) >= 16 else text
+
 def select_asset(assets):
     """
     Choose which asset to show next, honouring image_order and the history in

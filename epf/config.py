@@ -36,7 +36,6 @@ DEFAULT_CONFIG = {
     },
     'notify': {
         'enabled': False,               # Master switch
-        'channel': 'telegram',          # telegram/line
         'battery_threshold': 20,        # Warn at or below this percentage
         'min_interval_hours': 12,       # Never warn more often than this
     },

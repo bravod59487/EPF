@@ -131,8 +131,9 @@
                         <img id="photoPreview" class="photo-preview" alt="" src="preview/original">
                     </a>
                     <div class="photo-facts">
-                        <span class="photo-album">{{ photo.album }}</span>
-                        <span class="photo-time">{{ photo.shown_at }}</span>
+                        <span class="photo-taken">{{ photo.taken_at }}</span>
+                        <span class="photo-time"><span data-i18n="photo.sentAt">Sent</span>
+                            {{ photo.shown_at }}</span>
                     </div>
                 </div>
                 {% endif %}
@@ -143,8 +144,7 @@
                         <img id="nextPreview" class="photo-preview" alt="">
                     </a>
                     <div class="photo-facts">
-                        <span class="photo-album" id="nextAlbum"></span>
-                        <span class="photo-time" id="nextChosen"></span>
+                        <span class="photo-taken" id="nextTaken"></span>
                     </div>
                 </div>
             </div>
@@ -352,15 +352,23 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="channel" data-i18n="label.notifyChannel">Send through:</label>
-                    <select id="channel" name="channel">
-                        <option value="telegram" {% if config['notify']['channel']=='telegram'
-                            %}selected{% endif %}>Telegram</option>
-                        <option value="line" {% if config['notify']['channel']=='line'
-                            %}selected{% endif %}>LINE</option>
-                    </select>
-                    <div class="hint" data-i18n="hint.notifyCredentials">The bot token and chat id come from
-                        the environment, not from this page</div>
+                    <label data-i18n="label.notifyChannel">Send through:</label>
+                    <div class="channel-tiles">
+                        <button type="button" class="channel-tile" id="tile-telegram"
+                            data-channel="telegram" onclick="openBinding('telegram')">
+                            <img src="{{ static_url('icons/telegram.png') }}" alt="Telegram">
+                            <span class="channel-name">Telegram</span>
+                            <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                        </button>
+                        <button type="button" class="channel-tile" id="tile-line"
+                            data-channel="line" onclick="openBinding('line')">
+                            <img src="{{ static_url('icons/line.png') }}" alt="LINE">
+                            <span class="channel-name">LINE</span>
+                            <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                        </button>
+                    </div>
+                    <div class="hint" data-i18n="hint.notifyCredentials">Warnings go to every linked
+                        service. Linking only succeeds once a test message arrives.</div>
                 </div>
 
                 <div class="form-group">
@@ -388,6 +396,8 @@
 
                 <button type="button" class="reset-btn notify-test" onclick="testNotification()"
                     data-i18n="btn.testNotify">Send a test</button>
+                <p class="hint" id="notifyNoChannel" data-i18n="hint.notifyNoChannel" hidden>Link a service
+                    above before turning warnings on</p>
             </div>
 
             <div class="button-group">
@@ -427,6 +437,21 @@
         <footer>
             <span data-i18n="footer.name">E-paper Photo Frame</span> &copy; {{ current_year }}
         </footer>
+    </div>
+
+    <div id="bindModal" class="confirm-modal">
+        <div class="confirm-content bind-content">
+            <h2 id="bindTitle">Telegram</h2>
+            <p class="hint" id="bindHelp"></p>
+            <div id="bindFields"></div>
+            <p class="bind-error" id="bindError" hidden></p>
+            <div class="confirm-actions">
+                <button onclick="submitBinding()" id="bindSave" data-i18n="btn.bindSave">Test and link</button>
+                <button onclick="unbindChannel()" id="bindForget" class="reset-btn"
+                    data-i18n="btn.bindForget" hidden>Unlink</button>
+                <button onclick="closeBinding()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <div id="confirmModal" class="confirm-modal">

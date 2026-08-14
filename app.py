@@ -15,8 +15,8 @@ from datetime import datetime, timedelta
 import ntplib
 from flask import (Flask, jsonify, redirect, render_template, request, send_file,
                    url_for)
-from epf import (battery, config, eventlog, imaging, immich, notify, state,
-                 tracking)
+from epf import (battery, config, credentials, eventlog, imaging, immich, notify,
+                 state, tracking)
 
 app = Flask(__name__)
 
@@ -51,7 +51,7 @@ def inject_current_photo():
     shown_at = state.last_photo['shown_at']
     return {'photo': {
         'asset_id': state.last_photo['asset_id'],
-        'album': config.immich()['album'],
+        'taken_at': state.last_photo['taken_at'] or '',
         # The configured server rather than my.immich.app, so the link opens the
         # web UI on the LAN instead of needing an internet round trip
         'link': immich.photo_link(state.last_photo['asset_id']),
@@ -129,8 +129,6 @@ def settings():
 
     if submitted['immich']['rotation'] not in [0, 90, 180, 270]:
         return render(error="Rotation must be 0, 90, 180, or 270 degrees")
-    if submitted['notify']['channel'] not in notify.CHANNELS:
-        return render(error="Unknown notification channel")
 
     try:
         config.write_file(submitted)
@@ -202,28 +200,74 @@ def read_log():
         limit = 50
     return _no_store(jsonify({'entries': eventlog.recent(limit)}))
 
-@app.route('/notify/test', methods=['POST'])
-def test_notification():
+@app.route('/notify/bind', methods=['POST'])
+def bind_notification():
     """
-    Send a message now, so the setup can be verified before it matters.
+    Store credentials for a channel, but only once a test message has arrived.
 
-    The page passes the channel it is showing, which may not be the saved one
-    yet: testing should try what you are looking at, not what you last saved.
+    Nothing is written unless the send succeeds, so "bound" always means "known
+    to work" rather than "something was typed in".
     """
-    channel = request.form.get('channel') or request.args.get('channel')
-    if channel and channel not in notify.CHANNELS:
+    channel = request.form.get('channel')
+    if channel not in credentials.FIELDS:
         return _no_store(jsonify({"error": "unknown_channel", "detail": channel})), 400
-    channel = channel or config.notify()['channel']
+
+    values = {field: (request.form.get(field) or '').strip()
+              for field in credentials.FIELDS[channel]}
+    missing = [field for field, value in values.items() if not value]
+    if missing:
+        return _no_store(jsonify({"error": "not_configured",
+                                  "detail": ', '.join(missing)})), 400
 
     try:
-        notify.send("E-paper frame: test notification", channel=channel)
+        notify.send("E-paper frame: notifications are set up", channel, values)
     except notify.NotifyError as error:
         eventlog.record('error', where='notify', message=error.code,
                         detail=error.detail, channel=channel)
         return _no_store(jsonify({"error": error.code, "detail": error.detail})), 502
 
-    eventlog.record('notified', channel=channel, reason='test')
-    return _no_store(jsonify({'sent': True, 'channel': channel}))
+    credentials.save_verified(channel, values)
+    eventlog.record('notify_bound', channel=channel, ip=eventlog.client_ip())
+    return _no_store(jsonify({'bound': True, 'channel': channel,
+                              'channels': credentials.summary()}))
+
+@app.route('/notify/unbind', methods=['POST'])
+def unbind_notification():
+    """ Forget a channel's credentials """
+    channel = request.form.get('channel')
+    if channel not in credentials.FIELDS:
+        return _no_store(jsonify({"error": "unknown_channel", "detail": channel})), 400
+
+    credentials.forget(channel)
+    eventlog.record('notify_unbound', channel=channel, ip=eventlog.client_ip())
+    return _no_store(jsonify({'channels': credentials.summary()}))
+
+@app.route('/notify/channels')
+def notification_channels():
+    """ Whether each channel is bound. Never the credentials themselves. """
+    return _no_store(jsonify({'channels': credentials.summary(),
+                              'fields': {c: list(f) for c, f in credentials.FIELDS.items()}}))
+
+@app.route('/notify/test', methods=['POST'])
+def test_notification():
+    """ Send to every bound channel, so a working setup can be re-checked """
+    channels = notify.bound_channels()
+    if not channels:
+        return _no_store(jsonify({"error": "not_configured", "detail": "no channel bound"})), 400
+
+    failures = {}
+    for channel in channels:
+        try:
+            notify.send("E-paper frame: test notification", channel)
+            eventlog.record('notified', channel=channel, reason='test')
+        except notify.NotifyError as error:
+            failures[channel] = error.detail or error.code
+            eventlog.record('error', where='notify', message=error.code,
+                            detail=error.detail, channel=channel)
+
+    if failures:
+        return _no_store(jsonify({"error": "rejected", "detail": failures})), 502
+    return _no_store(jsonify({'sent': True, 'channels': channels}))
 
 @app.route('/log/clear', methods=['POST'])
 def clear_log():
@@ -280,12 +324,10 @@ def upcoming_photo():
         eventlog.record('photo_swapped', ip=eventlog.client_ip(),
                         asset_id=asset['id'], album=album)
 
-    chosen_at = state.next_photo['chosen_at']
     return _no_store(jsonify({
         'asset_id': asset['id'],
-        'album': state.next_photo['album'],
         'link': immich.photo_link(asset['id']),
-        'chosen_at': chosen_at.strftime('%Y-%m-%d %H:%M') if chosen_at else None,
+        'taken_at': immich.taken_at_text(asset),
     }))
 
 # ------------------------------------------------- the contract with the frame
@@ -344,7 +386,8 @@ def process_and_download():
 
         c_code = imaging.pack_bmp_for_panel(processed)
 
-        state.last_photo.update({'asset_id': asset_id, 'shown_at': datetime.now()})
+        state.last_photo.update({'asset_id': asset_id, 'shown_at': datetime.now(),
+                                 'taken_at': immich.taken_at_text(selected)})
 
         response = send_file(c_code, mimetype='text/plain', as_attachment=True,
                              download_name=f"image_{asset_id}.c")

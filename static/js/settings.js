@@ -93,6 +93,7 @@ function applyTranslations() {
     // so redo them by hand instead of leaving text in the old language
     renderStatus();
     renderLog();
+    renderChannels();
 }
 
 /*
@@ -106,8 +107,7 @@ function renderNext(info) {
         return;
     }
     document.getElementById('nextLink').href = info.link;
-    document.getElementById('nextAlbum').textContent = info.album || '';
-    document.getElementById('nextChosen').textContent = info.chosen_at || '';
+    document.getElementById('nextTaken').textContent = info.taken_at || '';
     // The URL is stable, so a swap needs a cache-buster to actually reload
     document.getElementById('nextPreview').src = 'preview/next?t=' + Date.now();
     slot.hidden = false;
@@ -127,17 +127,150 @@ function swapNextPhoto() {
     loadNext('POST');
 }
 
-function testNotification() {
-    // Send the channel currently selected, not the one last saved, so the test
-    // reflects what is on screen
-    const body = new FormData();
-    body.append('channel', document.getElementById('channel').value);
+/*
+ * Linking a notification service.
+ *
+ * The credentials are never sent to the page - it is only told which channels are
+ * linked - and a channel only counts as linked once a test message has arrived,
+ * so "linked" means "known to work".
+ */
+const CHANNEL_LABELS = { telegram: 'Telegram', line: 'LINE' };
+let channelFields = {};
+let channelState = {};
+let bindingChannel = null;
 
-    fetch('notify/test', { method: 'POST', body: body, cache: 'no-store' })
-        .then(response => response.json().then(body => ({ ok: response.ok, body })))
-        .then(({ ok, body }) => {
+function renderChannels() {
+    Object.keys(CHANNEL_LABELS).forEach(channel => {
+        const tile = document.getElementById('tile-' + channel);
+        if (!tile) {
+            return;
+        }
+        const info = channelState[channel] || {};
+        tile.dataset.bound = info.bound ? 'true' : 'false';
+        const state = tile.querySelector('.channel-state');
+        state.dataset.i18n = info.bound ? 'bind.bound' : 'bind.unbound';
+        state.textContent = t(state.dataset.i18n);
+    });
+
+    // Warnings have nowhere to go until something is linked
+    const none = document.getElementById('notifyNoChannel');
+    if (none) {
+        none.hidden = Object.values(channelState).some(info => info.bound);
+    }
+}
+
+function loadChannels() {
+    fetch('notify/channels', { cache: 'no-store' })
+        .then(response => response.json())
+        .then(payload => {
+            channelFields = payload.fields || {};
+            channelState = payload.channels || {};
+            renderChannels();
+        })
+        .catch(() => { /* the tiles simply stay as they are */ });
+}
+
+function openBinding(channel) {
+    bindingChannel = channel;
+    const bound = (channelState[channel] || {}).bound;
+
+    document.getElementById('bindTitle').textContent = CHANNEL_LABELS[channel] || channel;
+    document.getElementById('bindHelp').textContent = t('bind.help.' + channel);
+    document.getElementById('bindError').hidden = true;
+    document.getElementById('bindForget').hidden = !bound;
+    document.getElementById('bindSave').textContent =
+        t(bound ? 'btn.bindAgain' : 'btn.bindSave');
+
+    // Always blank: the stored values are never sent to the browser
+    const holder = document.getElementById('bindFields');
+    holder.textContent = '';
+    (channelFields[channel] || []).forEach(field => {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', 'bind-' + field);
+        label.textContent = t('bind.field.' + field);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'bind-' + field;
+        input.autocomplete = 'off';
+        input.spellcheck = false;
+
+        group.append(label, input);
+        holder.appendChild(group);
+    });
+
+    document.getElementById('bindModal').style.display = 'flex';
+}
+
+function closeBinding() {
+    document.getElementById('bindModal').style.display = 'none';
+    bindingChannel = null;
+}
+
+function submitBinding() {
+    const channel = bindingChannel;
+    const body = new FormData();
+    body.append('channel', channel);
+    (channelFields[channel] || []).forEach(field => {
+        body.append(field, document.getElementById('bind-' + field).value.trim());
+    });
+
+    const error = document.getElementById('bindError');
+    const save = document.getElementById('bindSave');
+    error.hidden = true;
+    save.disabled = true;
+    save.textContent = t('bind.testing');
+
+    fetch('notify/bind', { method: 'POST', body: body, cache: 'no-store' })
+        .then(response => response.json().then(payload => ({ ok: response.ok, payload })))
+        .then(({ ok, payload }) => {
+            save.disabled = false;
+            if (!ok) {
+                save.textContent = t('btn.bindSave');
+                error.textContent = t('bind.failed.' + payload.error) !== 'bind.failed.' + payload.error
+                    ? t('bind.failed.' + payload.error)
+                    : (payload.detail || payload.error);
+                error.hidden = false;
+                loadLog();
+                return;
+            }
+            channelState = payload.channels || channelState;
+            renderChannels();
+            closeBinding();
+            showNotification(t('bind.succeeded'));
+            loadLog();
+        })
+        .catch(() => {
+            save.disabled = false;
+            save.textContent = t('btn.bindSave');
+            error.textContent = t('bind.failed.unreachable');
+            error.hidden = false;
+        });
+}
+
+function unbindChannel() {
+    const body = new FormData();
+    body.append('channel', bindingChannel);
+    fetch('notify/unbind', { method: 'POST', body: body, cache: 'no-store' })
+        .then(response => response.json())
+        .then(payload => {
+            channelState = payload.channels || channelState;
+            renderChannels();
+            closeBinding();
+            loadLog();
+        })
+        .catch(() => closeBinding());
+}
+
+function testNotification() {
+    fetch('notify/test', { method: 'POST', cache: 'no-store' })
+        .then(response => response.json().then(payload => ({ ok: response.ok, payload })))
+        .then(({ ok, payload }) => {
             showNotification(ok ? t('notify.testSent')
-                : t('notify.testFailed') + ' ' + (body.detail || body.error || ''));
+                : t('notify.testFailed') + ' ' + JSON.stringify(payload.detail || payload.error));
             loadLog();
         })
         .catch(() => showNotification(t('notify.testFailed')));
@@ -320,6 +453,8 @@ const LOG_EVENTS = {
     settings_saved: 'event.settingsSaved',
     photo_swapped: 'event.photoSwapped',
     log_cleared: 'event.logCleared',
+    notify_bound: 'event.notifyBound',
+    notify_unbound: 'event.notifyUnbound',
     notified: 'event.notified',
     config_reloaded: 'event.configReloaded',
     tracking_reset: 'event.trackingReset',
@@ -440,6 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchStatus();
     loadLog();
     loadNext();
+    loadChannels();
 
     // Both previews are proxied from Immich, so a failure there is the
     // likely cause; say so rather than leaving a broken image.
@@ -460,7 +596,7 @@ function confirmReset() {
     ['url', 'album', 'rotation', 'display_mode', 'image_order',
         'sleep_start_hour', 'sleep_start_minute',
         'sleep_end_hour', 'sleep_end_minute', 'wakeup_interval',
-        'channel', 'battery_threshold', 'min_interval_hours'].forEach(id => {
+        'battery_threshold', 'min_interval_hours'].forEach(id => {
             document.getElementById(id).value = String(DEFAULT_SETTINGS[id]);
         });
 

@@ -16,7 +16,8 @@ battery = {
 # What the frame is showing right now
 last_photo = {
     'asset_id': None,
-    'shown_at': None,
+    'shown_at': None,    # when the server handed it over
+    'taken_at': None,    # the photo's own EXIF date, for display
 }
 
 # What it will be handed on its next wake-up, chosen in advance so the settings

@@ -641,6 +641,87 @@ select {
     font-variant-numeric: tabular-nums;
 }
 
+.channel-tiles {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.channel-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 8.5rem;
+    padding: 0.9rem 0.5rem;
+    background-color: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.channel-tile:hover {
+    background-color: var(--surface);
+    border-color: var(--accent);
+}
+
+.channel-tile img {
+    width: 34px;
+    height: 34px;
+    /* A linked service is shown in colour; an unlinked one greyed out */
+    filter: grayscale(1);
+    opacity: 0.45;
+    transition: filter var(--transition), opacity var(--transition);
+}
+
+.channel-tile[data-bound="true"] img {
+    filter: none;
+    opacity: 1;
+}
+
+.channel-tile[data-bound="true"] {
+    border-color: var(--moss);
+}
+
+.channel-name {
+    font-size: 0.9rem;
+}
+
+.channel-state {
+    font-size: 0.75rem;
+    color: var(--ink-3);
+}
+
+.channel-tile[data-bound="true"] .channel-state {
+    color: var(--moss);
+    font-weight: 600;
+}
+
+.bind-content {
+    max-width: 26rem;
+    text-align: left;
+}
+
+.bind-content h2 {
+    text-align: left;
+}
+
+.bind-content .form-group {
+    margin-bottom: 0.9rem;
+}
+
+.bind-error {
+    color: var(--clay);
+    font-size: 0.85rem;
+    margin-bottom: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.photo-taken {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
 .notify-test {
     margin-top: 1.2rem;
     width: auto;
