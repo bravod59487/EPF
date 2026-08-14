@@ -576,6 +576,7 @@ def inject_current_photo():
     shown_at = last_photo['shown_at']
     return {'photo': {
         'asset_id': last_photo['asset_id'],
+        'album': albumname,
         # Link to the configured server rather than my.immich.app, so the link
         # opens the web UI on the LAN instead of needing an internet round trip
         'link': f"{url.rstrip('/')}/photos/{last_photo['asset_id']}",
@@ -583,9 +584,63 @@ def inject_current_photo():
     }}
 
 def _no_store(response):
-    """ Previews change on every wake-up, so they must never be cached """
+    """ Status and previews change constantly, so they must never be cached """
     response.headers['Cache-Control'] = 'no-store'
     return response
+
+@app.route('/status')
+def status():
+    """
+    Live health for the header: can we reach Immich, and is the frame checking in.
+
+    Returns machine-readable codes rather than sentences, so the page can render
+    them in whichever language it is showing.
+    """
+    # One request settles reachability, credentials and whether the album exists,
+    # which is the same call /download makes first anyway.
+    immich = {'state': 'error', 'code': 'not_configured'}
+    if url and albumname:
+        try:
+            response = requests.get(f"{url}/api/albums", headers=headers, timeout=6)
+            if response.status_code == 200:
+                names = [album.get('albumName') for album in response.json()]
+                if albumname in names:
+                    immich = {'state': 'ok', 'code': 'connected', 'album': albumname}
+                else:
+                    immich = {'state': 'warn', 'code': 'album_missing', 'album': albumname}
+            elif response.status_code in (401, 403):
+                immich = {'state': 'error', 'code': 'unauthorized'}
+            else:
+                immich = {'state': 'error', 'code': 'server_error', 'http': response.status_code}
+        except requests.RequestException:
+            immich = {'state': 'error', 'code': 'unreachable'}
+
+    # The device is silent between wake-ups, so "connected" can only mean
+    # "checked in recently enough", measured against its own wake-up interval.
+    last_seen = datetime.fromtimestamp(last_battery_update) if last_battery_update else None
+    if last_photo['shown_at'] and (last_seen is None or last_photo['shown_at'] > last_seen):
+        last_seen = last_photo['shown_at']
+
+    if last_seen is None:
+        frame = {'state': 'unknown', 'code': 'never', 'minutes_ago': None}
+    else:
+        minutes_ago = max(0, int((datetime.now() - last_seen).total_seconds() // 60))
+        interval = int(current_config['immich']['wakeup_interval'])
+        frame = {
+            'state': 'ok' if minutes_ago <= interval * 2 else 'warn',
+            'code': 'seen',
+            'minutes_ago': minutes_ago,
+            'last_seen': last_seen.strftime('%Y-%m-%d %H:%M'),
+        }
+
+    # Same one-hour freshness rule the settings page uses for the reading
+    voltage = last_battery_voltage if (time.time() - last_battery_update) < 3600 else 0
+    battery = {
+        'voltage': voltage,
+        'percentage': calculate_battery_percentage(voltage) if voltage > 0 else None,
+    }
+
+    return _no_store(jsonify({'immich': immich, 'frame': frame, 'battery': battery}))
 
 @app.route('/preview')
 def preview_current():
