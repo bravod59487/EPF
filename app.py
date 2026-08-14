@@ -204,15 +204,26 @@ def read_log():
 
 @app.route('/notify/test', methods=['POST'])
 def test_notification():
-    """ Send a message now, so the setup can be verified before it matters """
+    """
+    Send a message now, so the setup can be verified before it matters.
+
+    The page passes the channel it is showing, which may not be the saved one
+    yet: testing should try what you are looking at, not what you last saved.
+    """
+    channel = request.form.get('channel') or request.args.get('channel')
+    if channel and channel not in notify.CHANNELS:
+        return _no_store(jsonify({"error": "unknown_channel", "detail": channel})), 400
+    channel = channel or config.notify()['channel']
+
     try:
-        notify.send("E-paper frame: test notification")
+        notify.send("E-paper frame: test notification", channel=channel)
     except notify.NotifyError as error:
-        eventlog.record('error', where='notify', message=error.code, detail=error.detail)
+        eventlog.record('error', where='notify', message=error.code,
+                        detail=error.detail, channel=channel)
         return _no_store(jsonify({"error": error.code, "detail": error.detail})), 502
 
-    eventlog.record('notified', channel=config.notify()['channel'], reason='test')
-    return _no_store(jsonify({'sent': True}))
+    eventlog.record('notified', channel=channel, reason='test')
+    return _no_store(jsonify({'sent': True, 'channel': channel}))
 
 @app.route('/log/clear', methods=['POST'])
 def clear_log():

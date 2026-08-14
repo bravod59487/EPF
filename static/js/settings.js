@@ -128,7 +128,12 @@ function swapNextPhoto() {
 }
 
 function testNotification() {
-    fetch('notify/test', { method: 'POST', cache: 'no-store' })
+    // Send the channel currently selected, not the one last saved, so the test
+    // reflects what is on screen
+    const body = new FormData();
+    body.append('channel', document.getElementById('channel').value);
+
+    fetch('notify/test', { method: 'POST', body: body, cache: 'no-store' })
         .then(response => response.json().then(body => ({ ok: response.ok, body })))
         .then(({ ok, body }) => {
             showNotification(ok ? t('notify.testSent')

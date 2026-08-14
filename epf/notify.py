@@ -58,9 +58,14 @@ def _line(text):
 
 SENDERS = {'telegram': _telegram, 'line': _line}
 
-def send(text):
-    """ Push one message over the configured channel. Raises NotifyError. """
-    channel = config.notify()['channel']
+def send(text, channel=None):
+    """
+    Push one message. Raises NotifyError.
+
+    The channel defaults to the saved setting, but can be overridden so the test
+    button can try whatever is selected on the page before it has been saved.
+    """
+    channel = channel or config.notify()['channel']
     sender = SENDERS.get(channel)
     if not sender:
         raise NotifyError('unknown_channel', channel)
