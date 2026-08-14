@@ -1,0 +1,1030 @@
+/*
+ * Part of the e-paper photo frame settings page.
+ * Styles. Every colour is a custom property, so re-theming means editing
+ * the token blocks at the top and nothing else.
+ */
+/*
+ * The palette is taken from the panel itself: charcoal bezel, warm paper
+ * white, and the muted slate / moss / mustard the Spectra 6 palette
+ * actually renders. Everything is a token here, so re-theming the page
+ * means editing this block and nothing else.
+ */
+:root {
+    --paper: #f2efe6;
+    --surface: #fffdf8;
+    --surface-2: #f7f4ec;
+    --bezel: #2b2f33;
+    --bezel-2: #212528;
+    --ink: #23282c;
+    --ink-2: #5c646b;
+    --ink-3: #8b929a;
+    --line: #e2dccf;
+    --line-strong: #cec7b6;
+    --accent: #4f6b80;
+    --accent-2: #3c5364;
+    --accent-soft: rgba(79, 107, 128, 0.12);
+    --moss: #6f7f45;
+    --sun: #cf9f34;
+    --clay: #a8503c;
+    --on-accent: #ffffff;
+    --radius: 14px;
+    --radius-sm: 9px;
+    --shadow: 0 1px 2px rgba(35, 40, 44, 0.04), 0 8px 24px rgba(35, 40, 44, 0.06);
+    --shadow-lift: 0 2px 4px rgba(35, 40, 44, 0.06), 0 14px 36px rgba(35, 40, 44, 0.1);
+    --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/*
+ * data-theme is set on <html> before first paint by the inline script in
+ * <head>, which resolves "auto" against the OS preference. Keeping the
+ * dark palette in one explicit block means there is no second copy of it
+ * inside a media query that could drift out of sync.
+ */
+:root[data-theme="dark"] {
+    --paper: #16191b;
+    --surface: #1f2326;
+    --surface-2: #262b2f;
+    --bezel: #1b1e21;
+    --bezel-2: #141719;
+    --ink: #e9e5db;
+    --ink-2: #a6acb2;
+    --ink-3: #7b838a;
+    --line: #2f3539;
+    --line-strong: #3d4449;
+    --accent: #7fa0b8;
+    --accent-2: #9dbcd2;
+    --accent-soft: rgba(127, 160, 184, 0.16);
+    --moss: #9aad63;
+    --sun: #e0b95a;
+    --clay: #cc7a63;
+    --on-accent: #14181b;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 14px 36px rgba(0, 0, 0, 0.4);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    background-color: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- header ---------- */
+
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background-color: var(--bezel);
+    /* A faint dot grid, echoing the dithering the panel itself uses */
+    background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+    background-size: 7px 7px;
+    border-bottom: 1px solid var(--bezel-2);
+    padding: 0.9rem 0;
+}
+
+.header-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+}
+
+.brand img {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.brand h1 {
+    color: #f4f1e8;
+    font-weight: 600;
+    font-size: 1.12rem;
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-sm);
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #f4f1e8;
+    cursor: pointer;
+}
+
+.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+.icon-btn:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+}
+
+.icon-btn svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* Only the icon for the active mode is shown */
+.icon-btn .ico {
+    display: none;
+}
+
+.icon-btn[data-mode="auto"] .ico-auto,
+.icon-btn[data-mode="light"] .ico-light,
+.icon-btn[data-mode="dark"] .ico-dark {
+    display: block;
+}
+
+.lang-switch select {
+    width: auto;
+    padding: 0.42rem 2rem 0.42rem 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: var(--radius-sm);
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #f4f1e8;
+    font-size: 0.86rem;
+    font-family: inherit;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23f4f1e8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    background-size: 10px;
+    transition: background-color var(--transition), border-color var(--transition);
+}
+
+.lang-switch select:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/*
+ * The generic select:focus paints the form-field surface, which is
+ * near-white in light mode - on this dark header that would leave cream
+ * text on a white field. Two classes worth of specificity beats it
+ * regardless of source order.
+ */
+.lang-switch select:focus {
+    background-color: rgba(255, 255, 255, 0.18);
+    border-color: rgba(255, 255, 255, 0.45);
+    color: #f4f1e8;
+    box-shadow: none;
+}
+
+.lang-switch select:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.6);
+    outline-offset: 2px;
+}
+
+/* Native dropdown lists render on their own surface, so options need real colors */
+.lang-switch select option {
+    color: var(--ink);
+    background-color: var(--surface);
+}
+
+/* ---------- status strip ---------- */
+
+.status-bar {
+    margin-top: 0.85rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.status-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    flex-wrap: wrap;
+}
+
+.status-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem 1.1rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: rgba(244, 241, 232, 0.72);
+    white-space: nowrap;
+}
+
+.pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background-color: var(--ink-3);
+    transition: background-color var(--transition);
+}
+
+.pill[data-state="ok"] .dot {
+    background-color: #7fb069;
+    box-shadow: 0 0 0 3px rgba(127, 176, 105, 0.18);
+}
+
+.pill[data-state="warn"] .dot {
+    background-color: #e0b95a;
+    box-shadow: 0 0 0 3px rgba(224, 185, 90, 0.18);
+}
+
+.pill[data-state="error"] .dot {
+    background-color: #d1685a;
+    box-shadow: 0 0 0 3px rgba(209, 104, 90, 0.18);
+}
+
+.pill[data-state="pending"] .dot {
+    background-color: rgba(244, 241, 232, 0.35);
+}
+
+.pill-detail {
+    color: rgba(244, 241, 232, 0.45);
+}
+
+.battery-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+    color: rgba(244, 241, 232, 0.72);
+    white-space: nowrap;
+}
+
+.battery-chip svg {
+    width: 26px;
+    height: 13px;
+    /* the fill rect inherits this, so state colours the level itself */
+    color: rgba(244, 241, 232, 0.5);
+}
+
+.battery-chip[data-state="good"] svg {
+    color: #7fb069;
+}
+
+.battery-chip[data-state="low"] svg {
+    color: #e0b95a;
+}
+
+.battery-chip[data-state="critical"] svg {
+    color: #d1685a;
+}
+
+/* ---------- layout ---------- */
+
+.container {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 1rem;
+    /* Spaces the error banner, preview, form, log and footer evenly.
+       Cards carry no margin of their own, so this is what separates
+       the ones that sit outside the form's own grid. */
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/*
+ * The preview spans the width on its own, and the settings cards below it
+ * pair up into two columns once there is room. One column on phones.
+ */
+#settingsForm {
+    display: grid;
+    gap: 1.25rem;
+    align-items: start;
+    min-width: 0;
+}
+
+@media (min-width: 900px) {
+    #settingsForm {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    #settingsForm .button-group {
+        /* spans both columns, so centre it rather than leaving it
+           hanging off the left edge of a full-width row */
+        grid-column: 1 / -1;
+        justify-content: center;
+    }
+}
+
+.card {
+    background-color: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.6rem;
+}
+
+.card-head {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 1.4rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.card-head svg {
+    width: 19px;
+    height: 19px;
+    color: var(--accent);
+    flex-shrink: 0;
+}
+
+.card-title {
+    font-size: 0.94rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+}
+
+.form-group {
+    margin-bottom: 1.4rem;
+}
+
+.form-group:last-child {
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 0.45rem;
+    font-weight: 500;
+    font-size: 0.92rem;
+    color: var(--ink);
+}
+
+.hint {
+    font-size: 0.82rem;
+    color: var(--ink-3);
+    margin-top: 0.5rem;
+}
+
+/* ---------- inputs ---------- */
+
+input[type="text"],
+select {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-2);
+    color: var(--ink);
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color var(--transition), box-shadow var(--transition), background-color var(--transition);
+}
+
+input[type="text"]:hover,
+select:hover {
+    border-color: var(--accent);
+}
+
+input[type="text"]:focus,
+select:focus {
+    border-color: var(--accent);
+    background-color: var(--surface);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+select {
+    appearance: none;
+    padding-right: 2.2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%235c646b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.8rem center;
+    background-size: 11px;
+    cursor: pointer;
+}
+
+:root[data-theme="dark"] select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a6acb2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* ---------- sliders ---------- */
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.slider-container input[type="range"] {
+    flex-grow: 1;
+    height: 6px;
+    appearance: none;
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    /* --fill is kept in sync by updateSliderValue() */
+    background: linear-gradient(to right,
+            var(--accent) 0%, var(--accent) var(--fill, 50%),
+            var(--line) var(--fill, 50%), var(--line) 100%);
+}
+
+.slider-container input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    box-shadow: 0 1px 4px rgba(35, 40, 44, 0.2);
+    cursor: pointer;
+    transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.slider-container input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    cursor: pointer;
+}
+
+.slider-container input[type="range"]:hover::-webkit-slider-thumb {
+    transform: scale(1.12);
+}
+
+.slider-container input[type="range"]:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.slider-value {
+    min-width: 46px;
+    padding: 0.2rem 0.5rem;
+    text-align: center;
+    background-color: var(--accent-soft);
+    color: var(--accent-2);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- sleep time range ---------- */
+
+.time-input {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.time-input select {
+    width: auto;
+    min-width: 66px;
+    padding: 0.55rem 1.7rem 0.55rem 0.6rem;
+    background-position: right 0.5rem center;
+    font-variant-numeric: tabular-nums;
+}
+
+.time-colon {
+    color: var(--ink-3);
+    font-weight: 600;
+}
+
+.time-sep {
+    margin: 0 0.5rem;
+    color: var(--ink-3);
+    font-size: 0.88rem;
+}
+
+/* ---------- now showing ---------- */
+
+/* Side by side once there is room, so a full-width card does not turn the
+   preview into a giant banner */
+/* Current and next sit side by side once there is room, stacked on phones */
+.photo-pair {
+    display: grid;
+    gap: 1.25rem;
+}
+
+@media (min-width: 720px) {
+    .photo-pair {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+}
+
+.photo-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.photo-label {
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+}
+
+.photo-link {
+    display: block;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background-color: var(--surface-2);
+    transition: border-color var(--transition);
+}
+
+.photo-link:hover {
+    border-color: var(--accent);
+}
+
+.photo-preview {
+    display: block;
+    width: 100%;
+    /* The panel is always 800x480 once cropped, whatever the source was */
+    aspect-ratio: 5 / 3;
+    object-fit: contain;
+}
+
+
+.segmented {
+    display: inline-flex;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.segmented .seg {
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    border-radius: 0;
+    background-color: transparent;
+    color: var(--ink-2);
+    font-size: 0.83rem;
+    font-weight: 500;
+}
+
+.segmented .seg:hover {
+    background-color: var(--surface-2);
+    color: var(--ink);
+}
+
+.segmented .seg.is-active {
+    background-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.photo-facts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.photo-album {
+    font-weight: 600;
+    font-size: 1rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.photo-time {
+    font-size: 0.82rem;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.channel-tiles {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.channel-slot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.channel-use {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--ink-2);
+    cursor: pointer;
+}
+
+.channel-use input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* Nothing can be sent to a service that is not linked */
+.channel-use input:disabled {
+    cursor: not-allowed;
+}
+
+.channel-use input:disabled + span {
+    color: var(--ink-3);
+    opacity: 0.6;
+}
+
+.channel-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    width: 8.5rem;
+    padding: 0.9rem 0.5rem;
+    background-color: var(--surface-2);
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.channel-tile:hover {
+    background-color: var(--surface);
+    border-color: var(--accent);
+}
+
+.channel-tile img {
+    width: 34px;
+    height: 34px;
+    /* A linked service is shown in colour; an unlinked one greyed out */
+    filter: grayscale(1);
+    opacity: 0.45;
+    transition: filter var(--transition), opacity var(--transition);
+}
+
+.channel-tile[data-bound="true"] img {
+    filter: none;
+    opacity: 1;
+}
+
+.channel-tile[data-bound="true"] {
+    border-color: var(--moss);
+}
+
+.channel-name {
+    font-size: 0.9rem;
+}
+
+.channel-state {
+    font-size: 0.75rem;
+    color: var(--ink-3);
+}
+
+.channel-tile[data-bound="true"] .channel-state {
+    color: var(--moss);
+    font-weight: 600;
+}
+
+.bind-content {
+    max-width: 26rem;
+    text-align: left;
+}
+
+.bind-content h2 {
+    text-align: left;
+}
+
+.bind-content .form-group {
+    margin-bottom: 0.9rem;
+}
+
+.bind-error {
+    color: var(--clay);
+    font-size: 0.85rem;
+    margin-bottom: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.photo-taken {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.notify-test {
+    margin-top: 1.2rem;
+    width: auto;
+}
+
+/* ---------- system log ---------- */
+
+.log-refresh {
+    width: 30px;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--ink-2);
+}
+
+/* only the first of the pair pushes away from the title */
+.card-head .log-refresh:first-of-type {
+    margin-left: auto;
+}
+
+.log-refresh:hover {
+    background-color: var(--surface-2);
+    color: var(--ink);
+}
+
+.log-refresh svg {
+    width: 15px;
+    height: 15px;
+}
+
+.log-body {
+    max-height: 22rem;
+    overflow-y: auto;
+}
+
+.log-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.3rem 0.7rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+}
+
+.log-row:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.log-time {
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.log-tag {
+    padding: 0.05rem 0.45rem;
+    border-radius: 5px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    background-color: var(--surface-2);
+    color: var(--ink-2);
+    border: 1px solid var(--line);
+}
+
+.log-row[data-event="checkin"] .log-tag {
+    color: var(--accent-2);
+    border-color: var(--accent);
+}
+
+.log-row[data-event="settings_saved"] .log-tag {
+    color: var(--moss);
+    border-color: var(--moss);
+}
+
+.log-row[data-event="error"] .log-tag {
+    color: var(--clay);
+    border-color: var(--clay);
+}
+
+.log-detail {
+    color: var(--ink-2);
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.log-note {
+    color: var(--ink-3);
+    font-size: 0.85rem;
+}
+
+/* ---------- buttons ---------- */
+
+.button-group {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    flex-wrap: wrap;
+}
+
+button,
+input[type="submit"] {
+    padding: 0.72rem 1.35rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    background-color: var(--accent);
+    color: var(--on-accent);
+    font-size: 0.93rem;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+button:hover,
+input[type="submit"]:hover {
+    background-color: var(--accent-2);
+}
+
+button:active,
+input[type="submit"]:active {
+    transform: translateY(1px);
+}
+
+button:focus-visible,
+input[type="submit"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.reset-btn {
+    background-color: transparent;
+    color: var(--ink-2);
+    border-color: var(--line-strong);
+}
+
+.reset-btn:hover {
+    background-color: var(--surface-2);
+    border-color: var(--ink-3);
+    color: var(--ink);
+}
+
+/* ---------- feedback ---------- */
+
+.error {
+    display: flex;
+    gap: 0.6rem;
+    color: var(--clay);
+    background-color: var(--surface);
+    border: 1px solid var(--clay);
+    border-left-width: 3px;
+    padding: 0.9rem 1.1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+}
+
+#notification {
+    position: fixed;
+    top: 1.25rem;
+    left: 50%;
+    transform: translate(-50%, -12px);
+    background-color: var(--bezel);
+    color: #f4f1e8;
+    padding: 0.75rem 1.3rem;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lift);
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: none;
+    z-index: 1100;
+    opacity: 0;
+    transition: opacity var(--transition), transform var(--transition);
+}
+
+#notification.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.confirm-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 23, 25, 0.55);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1.5rem;
+}
+
+.confirm-content {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    padding: 1.75rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lift);
+    text-align: center;
+    max-width: 380px;
+    width: 100%;
+}
+
+.confirm-content h2 {
+    margin-bottom: 0.6rem;
+    font-size: 1.1rem;
+    color: var(--ink);
+}
+
+.confirm-content p {
+    margin-bottom: 1.5rem;
+    color: var(--ink-2);
+    font-size: 0.92rem;
+}
+
+.confirm-actions {
+    display: flex;
+    gap: 0.65rem;
+    justify-content: center;
+}
+
+footer {
+    text-align: center;
+    padding: 1.5rem 0 2.5rem;
+    font-size: 0.83rem;
+    color: var(--ink-3);
+}
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 640px) {
+    .container {
+        padding: 1.25rem 1rem 0.5rem;
+    }
+
+    .header-inner {
+        padding: 0 1rem;
+    }
+
+    .brand h1 {
+        font-size: 1rem;
+    }
+
+    .card {
+        padding: 1.25rem;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    /* Scoped to the form actions: the segmented preview toggle must
+       stay side by side */
+    .button-group button,
+    .button-group input[type="submit"] {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+    }
+}

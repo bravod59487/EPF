@@ -1,0 +1,38 @@
+# Everything this app persists lives in /config and /photos. Recreating the
+# container to pick up a new image destroys whatever was written only to the
+# container filesystem, so both are bind-mounted below. Without them, every
+# setting saved from the web page silently reverts to DEFAULT_CONFIG and the
+# shown-photo history in tracking.txt is lost on the next `docker compose pull`.
+#
+#   1. create a .env file next to this one containing IMMICH_API_KEY=...
+#   2. docker compose up -d
+#
+services:
+  epf:
+    image: jwchen119/epf
+    # To run a locally built image instead of the published one, comment out
+    # `image:` above and uncomment this:
+    # build: .
+    restart: unless-stopped
+    ports:
+      - "${EPF_PORT:-15001}:5000"
+    environment:
+      # Required. Compose refuses to start if this is unset, which is better than
+      # booting with no key and having every Immich request come back 401.
+      IMMICH_API_KEY: ${IMMICH_API_KEY:?IMMICH_API_KEY is not set - create a .env file next to docker-compose.yml}
+      # datetime.now() drives both the sleep window and the wake-up schedule, and
+      # the base image has no timezone set, so without this they are evaluated in
+      # UTC and land at the wrong hours. Zone data is already in the image.
+      TZ: ${TZ:-Asia/Taipei}
+    volumes:
+      - ./config:/config
+      - ./photos:/photos
+    healthcheck:
+      # The base image ships neither curl nor wget, so probe with python itself.
+      # /sleep only reads the config, so this never reaches out to Immich.
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/sleep', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

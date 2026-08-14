@@ -5,431 +5,232 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-paper Photo Frame Settings</title>
-    <style>
-        :root {
-            --primary-color: #4361EE;
-            --primary-light: #4895EF;
-            --accent-color: #3F37C9;
-            --error-color: #e63946;
-            --success-color: #2a9d8f;
-            --text-color: #2b2d42;
-            --text-light: #8d99ae;
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --transition: all 0.3s ease;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            line-height: 1.6;
-            padding: 0;
-            margin: 0;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1.5rem 0;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            margin-bottom: 2rem;
-        }
-
-        header h1 {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 2rem;
-            font-weight: 500;
-            font-size: 1.8rem;
-        }
-
-        .card {
-            background-color: var(--card-bg);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            transition: var(--transition);
-        }
-
-        .card:hover {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        }
-
-        .card-title {
-            font-size: 1.2rem;
-            color: var(--primary-color);
-            margin-bottom: 1.2rem;
-            font-weight: 500;
-        }
-
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--text-color);
-        }
-
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 0.8rem;
-            border: 1px solid #ddd;
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            transition: var(--transition);
-        }
-
-        input[type="text"]:focus,
-        select:focus {
-            border-color: var(--primary-light);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.15);
-        }
-
-        .small-text {
-            font-size: 0.85rem;
-            color: var(--text-light);
-            margin-top: 0.5rem;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .slider-container input[type="range"] {
-            flex-grow: 1;
-            height: 6px;
-            -webkit-appearance: none;
-            background: #eee;
-            border-radius: 3px;
-            outline: none;
-        }
-
-        .slider-container input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .slider-container input[type="range"]::-webkit-slider-thumb:hover {
-            transform: scale(1.1);
-        }
-
-        .slider-value {
-            background-color: var(--primary-color);
-            color: white;
-            width: 50px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 15px;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .error {
-            color: var(--error-color);
-            background-color: rgba(230, 57, 70, 0.1);
-            padding: 1rem;
-            border-radius: var(--border-radius);
-            margin-bottom: 1.5rem;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
-        }
-
-        button,
-        input[type="submit"] {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 500;
-            transition: var(--transition);
-        }
-
-        button:hover,
-        input[type="submit"]:hover {
-            background-color: var(--accent-color);
-        }
-
-        .reset-btn {
-            background-color: #f8f9fa;
-            color: var(--text-color);
-            border: 1px solid #ddd;
-        }
-
-        .reset-btn:hover {
-            background-color: #e9ecef;
-            color: var(--text-color);
-        }
-
-        .confirm-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .confirm-content {
-            background: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        .confirm-content h2 {
-            margin-bottom: 1rem;
-            color: var(--text-color);
-        }
-
-        .confirm-content p {
-            margin-bottom: 1.5rem;
-        }
-
-        .confirm-content button {
-            padding: 0.7rem 1.2rem;
-            margin: 0 0.5rem;
-        }
-
-        #notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: var(--success-color);
-            color: white;
-            padding: 0.8rem 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            display: none;
-            z-index: 1000;
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        #notification.show {
-            opacity: 1;
-        }
-
-        .time-input {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .time-input select {
-            width: 70px;
-            padding: 0.6rem;
-        }
-
-        .battery-title {
-            font-size: 1.6rem;
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 0.5rem;
-        }
-
-        .battery-charge {
-            font-size: 1.2rem;
-            color: #666;
-            margin-bottom: 1rem;
-        }
-
-        .battery-bar {
-            width: 100%;
-            height: 16px;
-            background-color: #f0f0f0;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .battery-level {
-            height: 100%;
-            background-color: #ff6347;
-            /* Tomato red color as shown in image */
-            border-radius: 8px;
-            transition: width 1s ease;
-        }
-
-        .battery-level.high,
-        .battery-level.medium,
-        .battery-level.low,
-        .battery-level.critical {
-            background-color: #ff6347;
-            animation: none;
-        }
-
-        .section-divider {
-            height: 1px;
-            background-color: #eee;
-            margin: 2rem 0;
-        }
-
-        footer {
-            text-align: center;
-            padding: 1.5rem 0;
-            margin-top: 2rem;
-            font-size: 0.9rem;
-            color: var(--text-light);
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon-32.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icon-180.png') }}">
+    <script>
+        // Runs before the stylesheet is applied, so a stored choice never flashes
+        // the wrong theme on the way in.
+        (function () {
+            var stored = null;
+            try {
+                stored = localStorage.getItem('epf_theme');
+            } catch (e) {
+                /* privacy mode: fall back to the system preference */
             }
-
-            header h1 {
-                padding: 0 1rem;
-                font-size: 1.5rem;
-            }
-
-            .card {
-                padding: 1.5rem;
-            }
-
-            .button-group {
-                flex-direction: column;
-            }
-
-            button,
-            input[type="submit"] {
-                width: 100%;
-            }
-
-            .time-input {
-                flex-wrap: wrap;
-            }
-        }
-    </style>
+            var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia
+                && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        })();
+    </script>
+    <link rel="stylesheet" href="{{ static_url('css/settings.css') }}">
 </head>
 
 <body>
     <div id="notification"></div>
 
-    <header>
-        <h1>E-paper Photo Frame Settings</h1>
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand">
+                <img src="{{ url_for('static', filename='icon-180.png') }}" alt="">
+                <h1 data-i18n="page.title">E-paper Photo Frame Settings</h1>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="themeToggle" class="icon-btn" data-mode="auto" onclick="cycleTheme()"
+                    data-i18n-aria-label="theme.auto" data-i18n-title="theme.auto" aria-label="Theme: follow system">
+                    <svg class="ico ico-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none" />
+                    </svg>
+                    <svg class="ico ico-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round">
+                        <circle cx="12" cy="12" r="4.2" />
+                        <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+                    </svg>
+                    <svg class="ico ico-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+                    </svg>
+                </button>
+                <div class="lang-switch">
+                    <select id="langSelect" data-i18n-aria-label="language.label" aria-label="Language"
+                        onchange="setLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="zh-Hant">繁體中文</option>
+                        <option value="zh-Hans">简体中文</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="status-bar">
+            <div class="status-inner">
+                <div class="status-group">
+                    <span class="pill" id="immichStatus" data-state="pending">
+                        <span class="dot"></span>
+                        <span data-i18n="status.immich">Immich</span>
+                        <span class="pill-detail" id="immichDetail"></span>
+                    </span>
+                    <span class="pill" id="frameStatus" data-state="pending">
+                        <span class="dot"></span>
+                        <span data-i18n="status.frame">Frame</span>
+                        <span class="pill-detail" id="frameDetail"></span>
+                    </span>
+                </div>
+                <span class="battery-chip" id="batteryChip" data-state="unknown">
+                    <svg viewBox="0 0 24 12" aria-hidden="true">
+                        <rect x="0.75" y="0.75" width="19" height="10.5" rx="2.5" fill="none" stroke="currentColor"
+                            stroke-width="1.5" />
+                        <path d="M21.5 4.2v3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                        <rect id="batteryFill" x="2.5" y="2.5" width="0" height="7" rx="1" fill="currentColor" />
+                    </svg>
+                    <span id="batteryPercent">—</span>
+                </span>
+            </div>
+        </div>
     </header>
 
     <div class="container">
         {% if error %}
-        <div class="error">
-            {{ error }}
+        <div class="error" role="alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                width="18" height="18" style="flex-shrink:0;margin-top:2px">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7.5v5M12 16h.01" />
+            </svg>
+            <span>{{ error }}</span>
         </div>
         {% endif %}
 
-        <div class="card">
-            <div class="battery-info">
-                <h2 class="battery-title">Battery Consumption</h2>
-                <p class="battery-charge">Charge Level: {{ "%.1f"|format(battery_percentage) }}%</p>
-                <div class="battery-bar">
-                    <div id="batteryLevel" class="battery-level" style="width: {{ battery_percentage }}%"></div>
+        <div class="card" id="photoCard"{% if not photo %} hidden{% endif %}>
+            <div class="card-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+                    <path d="M3 15.5 8.5 11l4 3.5L16 12l5 4" />
+                    <circle cx="9" cy="8.5" r="1.4" />
+                </svg>
+                <h2 class="card-title" data-i18n="card.photos">Photos</h2>
+                <button type="button" class="log-refresh" onclick="swapNextPhoto()" data-i18n-title="photo.swap"
+                    data-i18n-aria-label="photo.swap" title="Show a different one" aria-label="Show a different one">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7h6l3 5 3-5h3" />
+                        <path d="M18 4l3 3-3 3" />
+                        <path d="M3 17h6l3-5" />
+                        <path d="M18 14l3 3-3 3" />
+                        <path d="M15 17h6" />
+                    </svg>
+                </button>
+            </div>
+            <div class="photo-pair">
+                {% if photo %}
+                <div class="photo-slot">
+                    <span class="photo-label" data-i18n="card.nowShowing">Now Showing</span>
+                    <a class="photo-link" href="{{ photo.link }}" target="_blank" rel="noopener noreferrer"
+                        data-i18n-title="photo.open" title="Open in Immich">
+                        <img id="photoPreview" class="photo-preview" alt="" src="preview/original">
+                    </a>
+                    <div class="photo-facts">
+                        <span class="photo-taken">{{ photo.taken_at }}</span>
+                        <span class="photo-time"><span data-i18n="photo.sentAt">Sent</span>
+                            {{ photo.shown_at }}</span>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="photo-slot" id="nextSlot" hidden>
+                    <span class="photo-label" data-i18n="card.nextUp">Up Next</span>
+                    <a class="photo-link" id="nextLink" target="_blank" rel="noopener noreferrer"
+                        data-i18n-title="photo.open" title="Open in Immich">
+                        <img id="nextPreview" class="photo-preview" alt="">
+                    </a>
+                    <div class="photo-facts">
+                        <span class="photo-taken" id="nextTaken"></span>
+                    </div>
                 </div>
             </div>
         </div>
 
+
         <form id="settingsForm" method="POST" onsubmit="handleSubmit(event)">
             <div class="card">
-                <h2 class="card-title">Server Connection</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="7" rx="2" />
+                        <rect x="3" y="13" width="18" height="7" rx="2" />
+                        <path d="M7 7.5h.01M7 16.5h.01" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.server">Server Connection</h2>
+                </div>
                 <div class="form-group">
-                    <label for="url">Immich Server URL:</label>
+                    <label for="url" data-i18n="label.url">Immich Server URL:</label>
                     <input type="text" id="url" name="url" value="{{ config['immich']['url'] }}"
                         placeholder="http://localhost" required>
                 </div>
 
                 <div class="form-group">
-                    <label for="album">Album Name:</label>
+                    <label for="album" data-i18n="label.album">Album Name:</label>
                     <input type="text" id="album" name="album" value="{{ config['immich']['album'] }}"
                         placeholder="default_album" required>
                 </div>
             </div>
 
             <div class="card">
-                <h2 class="card-title">Display Settings</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <rect x="2.5" y="4" width="19" height="13" rx="2" />
+                        <path d="M9 20h6M12 17v3" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.display">Display Settings</h2>
+                </div>
                 <div class="form-group">
-                    <label for="rotation">Image Rotation:</label>
+                    <label for="rotation" data-i18n="label.rotation">Image Rotation:</label>
                     <select id="rotation" name="rotation">
-                        <option value="0" {% if config['immich']['rotation']==0 %}selected{% endif %}>0 degrees</option>
-                        <option value="90" {% if config['immich']['rotation']==90 %}selected{% endif %}>90 degrees
-                        </option>
-                        <option value="180" {% if config['immich']['rotation']==180 %}selected{% endif %}>180 degrees
-                        </option>
-                        <option value="270" {% if config['immich']['rotation']==270 %}selected{% endif %}>270 degrees
-                        </option>
+                        <option value="0" data-i18n="rotation.0" {% if config['immich']['rotation']==0 %}selected{% endif
+                            %}>0 degrees</option>
+                        <option value="90" data-i18n="rotation.90" {% if config['immich']['rotation']==90 %}selected{%
+                            endif %}>90 degrees</option>
+                        <option value="180" data-i18n="rotation.180" {% if config['immich']['rotation']==180 %}selected{%
+                            endif %}>180 degrees</option>
+                        <option value="270" data-i18n="rotation.270" {% if config['immich']['rotation']==270 %}selected{%
+                            endif %}>270 degrees</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="display_mode">Display Mode:</label>
+                    <label for="display_mode" data-i18n="label.displayMode">Display Mode:</label>
                     <select id="display_mode" name="display_mode">
-                        <option value="fit" {% if config['immich']['display_mode']=='fit' %}selected{% endif %}>Fit
-                            Width
-                        </option>
-                        <option value="fill" {% if config['immich']['display_mode']=='fill' %}selected{% endif %}>Fill
-                            Screen
-                        </option>
+                        <option value="fit" data-i18n="mode.fit" {% if config['immich']['display_mode']=='fit'
+                            %}selected{% endif %}>Fit Width</option>
+                        <option value="fill" data-i18n="mode.fill" {% if config['immich']['display_mode']=='fill'
+                            %}selected{% endif %}>Fill Screen</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label for="image_order">Image Display Order:</label>
+                    <label for="image_order" data-i18n="label.imageOrder">Image Display Order:</label>
                     <select id="image_order" name="image_order">
-                        <option value="random" {% if config['immich']['image_order']=='random' %}selected{% endif %}>
-                            Random</option>
-                        <option value="newest" {% if config['immich']['image_order']=='newest' %}selected{% endif %}>
-                            Newest First</option>
+                        <option value="random" data-i18n="order.random" {% if config['immich']['image_order']=='random'
+                            %}selected{% endif %}>Random</option>
+                        <option value="newest" data-i18n="order.newest" {% if config['immich']['image_order']=='newest'
+                            %}selected{% endif %}>Newest First</option>
                     </select>
                 </div>
             </div>
 
             <div class="card">
-                <h2 class="card-title">Image Enhancement</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M4 7h9M19 7h1M4 17h5M15 17h5" />
+                        <circle cx="16" cy="7" r="2.6" />
+                        <circle cx="12" cy="17" r="2.6" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.enhance">Image Enhancement</h2>
+                </div>
                 <div class="form-group">
-                    <label for="enhanced">Color Enhancement:</label>
+                    <label for="enhanced" data-i18n="label.enhanced">Color Enhancement:</label>
                     <div class="slider-container">
                         <input type="range" id="enhanced" name="enhanced" min="0.0" max="2.0" step="0.1"
                             value="{{ config['immich']['enhanced']|default('1.0') }}" oninput="updateSliderValue(this)">
@@ -438,7 +239,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="contrast">Contrast:</label>
+                    <label for="contrast" data-i18n="label.contrast">Contrast:</label>
                     <div class="slider-container">
                         <input type="range" id="contrast" name="contrast" min="0.0" max="2.0" step="0.1"
                             value="{{ config['immich']['contrast']|default('1.0') }}" oninput="updateSliderValue(this)">
@@ -447,7 +248,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="strength">Dithering Strength:</label>
+                    <label for="strength" data-i18n="label.strength">Dithering Strength:</label>
                     <div class="slider-container">
                         <input type="range" id="strength" name="strength" min="0.0" max="1.0" step="0.1"
                             value="{{ config['immich']['strength']|default('0.8') }}" oninput="updateSliderValue(this)">
@@ -457,9 +258,15 @@
             </div>
 
             <div class="card">
-                <h2 class="card-title">Power Management</h2>
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.power">Power Management</h2>
+                </div>
                 <div class="form-group">
-                    <label for="sleep_time">Sleep Time Range:</label>
+                    <label for="sleep_start_hour" data-i18n="label.sleepRange">Sleep Time Range:</label>
                     <div class="time-input">
                         <select id="sleep_start_hour" name="sleep_start_hour">
                             {% for hour in range(24) %}
@@ -469,7 +276,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        :
+                        <span class="time-colon">:</span>
                         <select id="sleep_start_minute" name="sleep_start_minute">
                             {% for minute in range(0, 60, 1) %}
                             <option value="{{ minute }}" {% if config['immich']['sleep_start_minute']==minute
@@ -478,7 +285,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <span style="margin: 0 10px;">to</span>
+                        <span class="time-sep" data-i18n="time.to">to</span>
                         <select id="sleep_end_hour" name="sleep_end_hour">
                             {% for hour in range(24) %}
                             <option value="{{ hour }}" {% if config['immich']['sleep_end_hour']==hour %}selected{% endif
@@ -487,7 +294,7 @@
                             </option>
                             {% endfor %}
                         </select>
-                        :
+                        <span class="time-colon">:</span>
                         <select id="sleep_end_minute" name="sleep_end_minute">
                             {% for minute in range(0, 60, 1) %}
                             <option value="{{ minute }}" {% if config['immich']['sleep_end_minute']==minute %}selected{%
@@ -497,153 +304,185 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="small-text">Device will not wake up during this time period</div>
+                    <div class="hint" data-i18n="hint.sleep">Device will not wake up during this time period</div>
                 </div>
 
                 <div class="form-group">
-                    <label for="wakeup_interval">Wake Up Interval (Outside Sleep Time):</label>
+                    <label for="wakeup_interval" data-i18n="label.wakeup">Wake Up Interval (Outside Sleep Time):</label>
                     <select id="wakeup_interval" name="wakeup_interval">
-                        <option value="30" {% if config['immich']['wakeup_interval']==30 %}selected{% endif %}>30
-                            minutes
-                        </option>
-                        <option value="60" {% if config['immich']['wakeup_interval']==60 %}selected{% endif %}>1 hour
-                        </option>
-                        <option value="120" {% if config['immich']['wakeup_interval']==120 %}selected{% endif %}>2 hours
-                        </option>
-                        <option value="180" {% if config['immich']['wakeup_interval']==180 %}selected{% endif %}>3 hours
-                        </option>
-                        <option value="240" {% if config['immich']['wakeup_interval']==240 %}selected{% endif %}>4 hours
-                        </option>
-                        <option value="360" {% if config['immich']['wakeup_interval']==360 %}selected{% endif %}>6 hours
-                        </option>
-                        <option value="480" {% if config['immich']['wakeup_interval']==480 %}selected{% endif %}>8 hours
-                        </option>
-                        <option value="720" {% if config['immich']['wakeup_interval']==720 %}selected{% endif %}>12
-                            hours
-                        </option>
-                        <option value="1440" {% if config['immich']['wakeup_interval']==1440 %}selected{% endif %}>24
-                            hours
-                        </option>
+                        <option value="30" data-i18n="interval.30" {% if config['immich']['wakeup_interval']==30
+                            %}selected{% endif %}>30 minutes</option>
+                        <option value="60" data-i18n="interval.60" {% if config['immich']['wakeup_interval']==60
+                            %}selected{% endif %}>1 hour</option>
+                        <option value="120" data-i18n="interval.120" {% if config['immich']['wakeup_interval']==120
+                            %}selected{% endif %}>2 hours</option>
+                        <option value="180" data-i18n="interval.180" {% if config['immich']['wakeup_interval']==180
+                            %}selected{% endif %}>3 hours</option>
+                        <option value="240" data-i18n="interval.240" {% if config['immich']['wakeup_interval']==240
+                            %}selected{% endif %}>4 hours</option>
+                        <option value="360" data-i18n="interval.360" {% if config['immich']['wakeup_interval']==360
+                            %}selected{% endif %}>6 hours</option>
+                        <option value="480" data-i18n="interval.480" {% if config['immich']['wakeup_interval']==480
+                            %}selected{% endif %}>8 hours</option>
+                        <option value="720" data-i18n="interval.720" {% if config['immich']['wakeup_interval']==720
+                            %}selected{% endif %}>12 hours</option>
+                        <option value="1440" data-i18n="interval.1440" {% if config['immich']['wakeup_interval']==1440
+                            %}selected{% endif %}>24 hours</option>
                     </select>
                 </div>
             </div>
 
+            <div class="card">
+                <div class="card-head">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 15.5V10a6 6 0 1 0-12 0v5.5L4.5 18h15z" />
+                        <path d="M10 21h4" />
+                    </svg>
+                    <h2 class="card-title" data-i18n="card.notify">Notifications</h2>
+                </div>
+                <div class="form-group">
+                    <label for="enabled" data-i18n="label.notifyEnabled">Low battery warnings:</label>
+                    <select id="enabled" name="enabled">
+                        <option value="false" data-i18n="switch.off" {% if not config['notify']['enabled']
+                            %}selected{% endif %}>Off</option>
+                        <option value="true" data-i18n="switch.on" {% if config['notify']['enabled']
+                            %}selected{% endif %}>On</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="label.notifyChannel">Send through:</label>
+                    <div class="channel-tiles">
+                        <div class="channel-slot">
+                            <button type="button" class="channel-tile" id="tile-telegram"
+                                data-channel="telegram" onclick="openBinding('telegram')">
+                                <img src="{{ static_url('icons/telegram.png') }}" alt="Telegram">
+                                <span class="channel-name">Telegram</span>
+                                <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                            </button>
+                            <label class="channel-use" for="use_telegram">
+                                <input type="checkbox" id="use_telegram" name="use_telegram"
+                                    {% if config['notify']['use_telegram'] %}checked{% endif %}>
+                                <span data-i18n="bind.use">Send warnings</span>
+                            </label>
+                        </div>
+                        <div class="channel-slot">
+                            <button type="button" class="channel-tile" id="tile-line"
+                                data-channel="line" onclick="openBinding('line')">
+                                <img src="{{ static_url('icons/line.png') }}" alt="LINE">
+                                <span class="channel-name">LINE</span>
+                                <span class="channel-state" data-i18n="bind.unbound">Not linked</span>
+                            </button>
+                            <label class="channel-use" for="use_line">
+                                <input type="checkbox" id="use_line" name="use_line"
+                                    {% if config['notify']['use_line'] %}checked{% endif %}>
+                                <span data-i18n="bind.use">Send warnings</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="hint" data-i18n="hint.notifyCredentials">Click a service to link it;
+                        linking only succeeds once a test message arrives. Warnings go to the ticked
+                        ones, so linking both does not mean messaging both.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="battery_threshold" data-i18n="label.notifyThreshold">Warn at or below:</label>
+                    <select id="battery_threshold" name="battery_threshold">
+                        {% for level in [5, 10, 15, 20, 30, 40, 50] %}
+                        <option value="{{ level }}" {% if config['notify']['battery_threshold']==level
+                            %}selected{% endif %}>{{ level }}%</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="min_interval_hours" data-i18n="label.notifyInterval">At most once every:</label>
+                    <select id="min_interval_hours" name="min_interval_hours">
+                        {% for hours in [1, 3, 6, 12, 24] %}
+                        <option value="{{ hours }}" data-i18n="hours.{{ hours }}"
+                            {% if config['notify']['min_interval_hours']==hours %}selected{% endif %}>
+                            {{ hours }} h</option>
+                        {% endfor %}
+                    </select>
+                    <div class="hint" data-i18n="hint.notifyInterval">The frame reports every wake-up, so
+                        without this a flat battery would message you all day</div>
+                </div>
+
+                <button type="button" class="reset-btn notify-test" onclick="testNotification()"
+                    data-i18n="btn.testNotify">Send a test</button>
+                <p class="hint" id="notifyNoChannel" data-i18n="hint.notifyNoChannel" hidden>Link a service
+                    above before turning warnings on</p>
+            </div>
+
             <div class="button-group">
-                <input type="submit" value="Save Configuration">
-                <button type="button" class="reset-btn" onclick="showResetConfirmation()">Reset to Default</button>
+                <input type="submit" data-i18n-value="btn.save" value="Save Configuration">
+                <button type="button" class="reset-btn" data-i18n="btn.reset"
+                    onclick="showResetConfirmation()">Reset to Default</button>
             </div>
         </form>
 
+        <div class="card log-card">
+            <div class="card-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M5 3.5h14v17H5z" />
+                    <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+                </svg>
+                <h2 class="card-title" data-i18n="card.log">System Log</h2>
+                <button type="button" class="log-refresh" onclick="loadLog()" data-i18n-title="log.refresh"
+                    title="Refresh" data-i18n-aria-label="log.refresh" aria-label="Refresh">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 11a8 8 0 1 0-2.3 5.7" />
+                        <path d="M20 5v6h-6" />
+                    </svg>
+                </button>
+                <button type="button" class="log-refresh" onclick="clearLog()" data-i18n-title="log.clear"
+                    title="Clear" data-i18n-aria-label="log.clear" aria-label="Clear">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />
+                    </svg>
+                </button>
+            </div>
+            <div class="log-body" id="logBody"></div>
+        </div>
+
         <footer>
-            E-paper Photo Frame &copy; 2025
+            <span data-i18n="footer.name">E-paper Photo Frame</span> &copy; {{ current_year }}
         </footer>
+    </div>
+
+    <div id="bindModal" class="confirm-modal">
+        <div class="confirm-content bind-content">
+            <h2 id="bindTitle">Telegram</h2>
+            <p class="hint" id="bindHelp"></p>
+            <div id="bindFields"></div>
+            <p class="bind-error" id="bindError" hidden></p>
+            <div class="confirm-actions">
+                <button onclick="submitBinding()" id="bindSave" data-i18n="btn.bindSave">Test and link</button>
+                <button onclick="unbindChannel()" id="bindForget" class="reset-btn"
+                    data-i18n="btn.bindForget" hidden>Unlink</button>
+                <button onclick="closeBinding()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
+            </div>
+        </div>
     </div>
 
     <div id="confirmModal" class="confirm-modal">
         <div class="confirm-content">
-            <h2>Reset to Default Settings</h2>
-            <p>Are you sure you want to reset all settings to default?</p>
-            <button onclick="confirmReset()">Confirm</button>
-            <button onclick="cancelReset()" class="reset-btn">Cancel</button>
+            <h2 data-i18n="modal.title">Reset to Default Settings</h2>
+            <p data-i18n="modal.body">Are you sure you want to reset all settings to default?</p>
+            <div class="confirm-actions">
+                <button onclick="confirmReset()" data-i18n="btn.confirm">Confirm</button>
+                <button onclick="cancelReset()" class="reset-btn" data-i18n="btn.cancel">Cancel</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.display = 'block';
-
-            setTimeout(() => {
-                notification.classList.add('show');
-            }, 10);
-
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 300);
-            }, 3000);
-        }
-
-        function updateSliderValue(slider) {
-            const value = parseFloat(slider.value);
-            const output = slider.nextElementSibling;
-            output.textContent = value.toFixed(1);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Update battery level visualization
-            const batteryPercentage = {{ battery_percentage|default (0)
-        }};
-        const batteryLevel = document.getElementById('batteryLevel');
-
-        if (batteryPercentage > 0) {
-            batteryLevel.style.width = batteryPercentage + '%';
-            // Remove color classes if using consistent red
-            batteryLevel.className = 'battery-level';
-        }
-    });
-
-        function showResetConfirmation() {
-            document.getElementById('confirmModal').style.display = 'flex';
-        }
-
-        function confirmReset() {
-            // Reset settings to default
-            document.getElementById('url').value = 'http://localhost';
-            document.getElementById('album').value = 'default_album';
-            document.getElementById('rotation').selectedIndex = 0;
-            document.getElementById('display_mode').selectedIndex = 0;
-            document.getElementById('image_order').selectedIndex = 0;
-
-            const sliders = [
-                { id: 'enhanced', defaultValue: 1.0 },
-                { id: 'contrast', defaultValue: 1.0 },
-                { id: 'strength', defaultValue: 0.8 }
-            ];
-
-            sliders.forEach(slider => {
-                const sliderElement = document.getElementById(slider.id);
-                const outputElement = sliderElement.nextElementSibling;
-                sliderElement.value = slider.defaultValue;
-                outputElement.textContent = slider.defaultValue.toFixed(1);
-            });
-
-            document.getElementById('sleep_start_hour').value = '23';
-            document.getElementById('sleep_start_minute').value = '0';
-            document.getElementById('sleep_end_hour').value = '6';
-            document.getElementById('sleep_end_minute').value = '0';
-            document.getElementById('wakeup_interval').value = '30';
-
-            showNotification('Settings reset to default successfully!');
-            document.getElementById('confirmModal').style.display = 'none';
-        }
-
-        function cancelReset() {
-            document.getElementById('confirmModal').style.display = 'none';
-        }
-
-        function handleSubmit(event) {
-            event.preventDefault();
-
-            // Submit the form using fetch
-            fetch(window.location.href, {
-                method: 'POST',
-                body: new FormData(document.getElementById('settingsForm'))
-            })
-                .then(response => {
-                    if (response.ok) {
-                        showNotification('Settings saved successfully!');
-                        return;
-                    }
-                    throw new Error('Failed to save settings');
-                })
-                .catch(error => {
-                    showNotification('Error: ' + error.message);
-                });
-        }
-    </script>
+    <script>window.EPF_DEFAULTS = {{ defaults|tojson }};</script>
+    <script src="{{ static_url('js/i18n.js') }}"></script>
+    <script src="{{ static_url('js/settings.js') }}"></script>
 </body>
 
 </html>
