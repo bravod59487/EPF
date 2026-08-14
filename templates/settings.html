@@ -7,6 +7,21 @@
     <title>E-paper Photo Frame Settings</title>
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icon-32.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='icon-180.png') }}">
+    <script>
+        // Runs before the stylesheet is applied, so a stored choice never flashes
+        // the wrong theme on the way in.
+        (function () {
+            var stored = null;
+            try {
+                stored = localStorage.getItem('epf_theme');
+            } catch (e) {
+                /* privacy mode: fall back to the system preference */
+            }
+            var dark = stored === 'dark' || (stored !== 'light' && window.matchMedia
+                && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        })();
+    </script>
     <style>
         /*
          * The palette is taken from the panel itself: charcoal bezel, warm paper
@@ -39,28 +54,32 @@
             --transition: 160ms cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --paper: #16191b;
-                --surface: #1f2326;
-                --surface-2: #262b2f;
-                --bezel: #1b1e21;
-                --bezel-2: #141719;
-                --ink: #e9e5db;
-                --ink-2: #a6acb2;
-                --ink-3: #7b838a;
-                --line: #2f3539;
-                --line-strong: #3d4449;
-                --accent: #7fa0b8;
-                --accent-2: #9dbcd2;
-                --accent-soft: rgba(127, 160, 184, 0.16);
-                --moss: #9aad63;
-                --sun: #e0b95a;
-                --clay: #cc7a63;
-                --on-accent: #14181b;
-                --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
-                --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 14px 36px rgba(0, 0, 0, 0.4);
-            }
+        /*
+         * data-theme is set on <html> before first paint by the inline script in
+         * <head>, which resolves "auto" against the OS preference. Keeping the
+         * dark palette in one explicit block means there is no second copy of it
+         * inside a media query that could drift out of sync.
+         */
+        :root[data-theme="dark"] {
+            --paper: #16191b;
+            --surface: #1f2326;
+            --surface-2: #262b2f;
+            --bezel: #1b1e21;
+            --bezel-2: #141719;
+            --ink: #e9e5db;
+            --ink-2: #a6acb2;
+            --ink-3: #7b838a;
+            --line: #2f3539;
+            --line-strong: #3d4449;
+            --accent: #7fa0b8;
+            --accent-2: #9dbcd2;
+            --accent-soft: rgba(127, 160, 184, 0.16);
+            --moss: #9aad63;
+            --sun: #e0b95a;
+            --clay: #cc7a63;
+            --on-accent: #14181b;
+            --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.28);
+            --shadow-lift: 0 2px 4px rgba(0, 0, 0, 0.35), 0 14px 36px rgba(0, 0, 0, 0.4);
         }
 
         * {
@@ -125,6 +144,52 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: var(--radius-sm);
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #f4f1e8;
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            background-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .icon-btn:focus-visible {
+            outline: 2px solid rgba(255, 255, 255, 0.6);
+            outline-offset: 2px;
+        }
+
+        .icon-btn svg {
+            width: 17px;
+            height: 17px;
+        }
+
+        /* Only the icon for the active mode is shown */
+        .icon-btn .ico {
+            display: none;
+        }
+
+        .icon-btn[data-mode="auto"] .ico-auto,
+        .icon-btn[data-mode="light"] .ico-light,
+        .icon-btn[data-mode="dark"] .ico-dark {
+            display: block;
         }
 
         .lang-switch select {
@@ -261,10 +326,8 @@
             cursor: pointer;
         }
 
-        @media (prefers-color-scheme: dark) {
-            select {
-                background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a6acb2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-            }
+        :root[data-theme="dark"] select {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23a6acb2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
         }
 
         /* ---------- sliders ---------- */
@@ -663,14 +726,32 @@
                 <img src="{{ url_for('static', filename='icon-180.png') }}" alt="">
                 <h1 data-i18n="page.title">E-paper Photo Frame Settings</h1>
             </div>
-            <div class="lang-switch">
-                <select id="langSelect" data-i18n-aria-label="language.label" aria-label="Language"
-                    onchange="setLanguage(this.value)">
-                    <option value="en">English</option>
-                    <option value="zh-Hant">繁體中文</option>
-                    <option value="zh-Hans">简体中文</option>
-                    <option value="ja">日本語</option>
-                </select>
+            <div class="header-actions">
+                <button type="button" id="themeToggle" class="icon-btn" data-mode="auto" onclick="cycleTheme()"
+                    data-i18n-aria-label="theme.auto" data-i18n-title="theme.auto" aria-label="Theme: follow system">
+                    <svg class="ico ico-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                        <circle cx="12" cy="12" r="8.5" />
+                        <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none" />
+                    </svg>
+                    <svg class="ico ico-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round">
+                        <circle cx="12" cy="12" r="4.2" />
+                        <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" />
+                    </svg>
+                    <svg class="ico ico-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" />
+                    </svg>
+                </button>
+                <div class="lang-switch">
+                    <select id="langSelect" data-i18n-aria-label="language.label" aria-label="Language"
+                        onchange="setLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="zh-Hant">繁體中文</option>
+                        <option value="zh-Hans">简体中文</option>
+                        <option value="ja">日本語</option>
+                    </select>
+                </div>
             </div>
         </div>
     </header>
@@ -952,6 +1033,9 @@
             'en': {
                 'page.title': 'E-paper Photo Frame Settings',
                 'language.label': 'Language',
+                'theme.auto': 'Theme: follow system',
+                'theme.light': 'Theme: light',
+                'theme.dark': 'Theme: dark',
                 'card.nowShowing': 'Now Showing',
                 'photo.frame': 'Frame view',
                 'photo.original': 'Original',
@@ -1007,6 +1091,9 @@
             'zh-Hant': {
                 'page.title': '電子紙相框設定',
                 'language.label': '語言',
+                'theme.auto': '外觀：跟隨系統',
+                'theme.light': '外觀：淺色',
+                'theme.dark': '外觀：深色',
                 'card.nowShowing': '目前顯示',
                 'photo.frame': '相框畫面',
                 'photo.original': '原圖',
@@ -1062,6 +1149,9 @@
             'zh-Hans': {
                 'page.title': '电子纸相框设置',
                 'language.label': '语言',
+                'theme.auto': '外观：跟随系统',
+                'theme.light': '外观：浅色',
+                'theme.dark': '外观：深色',
                 'card.nowShowing': '当前显示',
                 'photo.frame': '相框画面',
                 'photo.original': '原图',
@@ -1117,6 +1207,9 @@
             'ja': {
                 'page.title': '電子ペーパーフォトフレーム設定',
                 'language.label': '言語',
+                'theme.auto': 'テーマ：システムに従う',
+                'theme.light': 'テーマ：ライト',
+                'theme.dark': 'テーマ：ダーク',
                 'card.nowShowing': '表示中',
                 'photo.frame': 'フレーム表示',
                 'photo.original': '元画像',
@@ -1180,7 +1273,10 @@
 
         const FALLBACK_LANG = 'en';
         const LANG_STORAGE_KEY = 'epf_lang';
+        const THEME_STORAGE_KEY = 'epf_theme';
+        const THEME_MODES = ['auto', 'light', 'dark'];
         let currentLang = FALLBACK_LANG;
+        let themeMode = 'auto';
 
         // localStorage throws in some privacy modes, so every access is guarded
         function readStoredLang() {
@@ -1268,6 +1364,54 @@
             applyTranslations();
         }
 
+        /*
+         * Theme: 'auto' follows the OS, 'light' and 'dark' override it. The mode
+         * is resolved to an explicit data-theme here rather than in a media query,
+         * so the dark palette exists in exactly one place in the stylesheet.
+         */
+        function systemPrefersDark() {
+            return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        }
+
+        function applyTheme() {
+            const dark = themeMode === 'dark' || (themeMode === 'auto' && systemPrefersDark());
+            document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+
+            const button = document.getElementById('themeToggle');
+            button.dataset.mode = themeMode;
+            // Keep the i18n keys current so a later language switch relabels it
+            button.dataset.i18nAriaLabel = 'theme.' + themeMode;
+            button.dataset.i18nTitle = 'theme.' + themeMode;
+            button.setAttribute('aria-label', t('theme.' + themeMode));
+            button.setAttribute('title', t('theme.' + themeMode));
+        }
+
+        function setTheme(mode) {
+            themeMode = THEME_MODES.indexOf(mode) !== -1 ? mode : 'auto';
+            try {
+                if (themeMode === 'auto') {
+                    localStorage.removeItem(THEME_STORAGE_KEY);
+                } else {
+                    localStorage.setItem(THEME_STORAGE_KEY, themeMode);
+                }
+            } catch (e) {
+                /* preference simply will not persist */
+            }
+            applyTheme();
+        }
+
+        function cycleTheme() {
+            setTheme(THEME_MODES[(THEME_MODES.indexOf(themeMode) + 1) % THEME_MODES.length]);
+        }
+
+        function readStoredTheme() {
+            try {
+                return localStorage.getItem(THEME_STORAGE_KEY);
+            } catch (e) {
+                return null;
+            }
+        }
+
         function showNotification(message) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
@@ -1314,6 +1458,18 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             setLanguage(detectLanguage());
+            setTheme(readStoredTheme() || 'auto');
+
+            // While on 'auto', follow the OS if it flips (e.g. a night schedule)
+            const darkQuery = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
+            if (darkQuery && darkQuery.addEventListener) {
+                darkQuery.addEventListener('change', () => {
+                    if (themeMode === 'auto') {
+                        applyTheme();
+                    }
+                });
+            }
+
             document.querySelectorAll('input[type="range"]').forEach(updateSliderValue);
             updateBattery({{ battery_percentage|default(0) }});
 
