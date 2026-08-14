@@ -1008,9 +1008,9 @@
                 <a class="photo-link" href="{{ photo.link }}" target="_blank" rel="noopener noreferrer"
                     data-i18n-title="photo.open" title="Open in Immich">
                     <img id="photoPreview" class="photo-preview" alt=""
-                        src="{{ url_for('preview_current') }}"
-                        data-frame-src="{{ url_for('preview_current') }}"
-                        data-original-src="{{ url_for('preview_original') }}">
+                        src="preview"
+                        data-frame-src="preview"
+                        data-original-src="preview/original">
                 </a>
                 <div class="photo-meta">
                     <div class="photo-facts">
@@ -1946,15 +1946,19 @@
         }
 
         function loadLog() {
-            fetch('{{ url_for("read_log") }}?limit=60', { cache: 'no-store' })
+            fetch('log?limit=60', { cache: 'no-store' })
                 .then(response => response.ok ? response.json() : Promise.reject(new Error(response.status)))
-                .then(payload => { logEntries = payload.entries; })
+                // Treat an unexpected shape as a failure rather than letting
+                // renderLog() trip over an undefined list
+                .then(payload => {
+                    logEntries = Array.isArray(payload.entries) ? payload.entries : 'failed';
+                })
                 .catch(() => { logEntries = 'failed'; })
                 .then(renderLog);
         }
 
         function fetchStatus() {
-            fetch('{{ url_for("status") }}', { cache: 'no-store' })
+            fetch('status', { cache: 'no-store' })
                 .then(response => response.ok ? response.json() : Promise.reject(new Error(response.status)))
                 .then(payload => { lastStatus = payload; })
                 .catch(() => { lastStatus = 'failed'; })
