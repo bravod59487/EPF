@@ -91,6 +91,15 @@ palette = [
 last_battery_voltage = 0
 last_battery_update = 0
 
+# What the frame is currently showing, recorded on each /download. Kept in memory
+# only, like the battery reading: the next wake-up refreshes it, so there is no
+# point writing it to disk.
+last_photo = {
+    'asset_id': None,
+    'shown_at': None,
+    'preview_png': None,  # the dithered 800x480 image, exactly as sent to the panel
+}
+
 def load_downloaded_images():
     """ Load downloaded image ID from tracking.txt """
     global albumname
@@ -558,6 +567,58 @@ def inject_current_year():
     """ Expose the current year to every template, so the footer never goes stale """
     return {'current_year': datetime.now().year}
 
+@app.context_processor
+def inject_current_photo():
+    """ Expose the photo the frame is showing, or None before the first check-in """
+    if not last_photo['asset_id']:
+        return {'photo': None}
+
+    shown_at = last_photo['shown_at']
+    return {'photo': {
+        'asset_id': last_photo['asset_id'],
+        # Link to the configured server rather than my.immich.app, so the link
+        # opens the web UI on the LAN instead of needing an internet round trip
+        'link': f"{url.rstrip('/')}/photos/{last_photo['asset_id']}",
+        'shown_at': shown_at.strftime('%Y-%m-%d %H:%M') if shown_at else '',
+    }}
+
+def _no_store(response):
+    """ Previews change on every wake-up, so they must never be cached """
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+@app.route('/preview')
+def preview_current():
+    """ The dithered image currently on the panel """
+    if not last_photo['preview_png']:
+        return jsonify({"error": "No photo has been sent to the frame yet"}), 404
+    return _no_store(send_file(io.BytesIO(last_photo['preview_png']), mimetype='image/png'))
+
+@app.route('/preview/original')
+def preview_original():
+    """
+    The untouched photo, proxied from Immich.
+
+    It has to be proxied rather than linked: thumbnails need the API key, which
+    only the server holds. Immich's thumbnail is also the right thing to ask for
+    because originals may be HEIC or RAW, which browsers cannot display.
+    """
+    asset_id = last_photo['asset_id']
+    if not asset_id:
+        return jsonify({"error": "No photo has been sent to the frame yet"}), 404
+
+    try:
+        upstream = requests.get(f"{url}/api/assets/{asset_id}/thumbnail",
+                                headers=headers, params={'size': 'preview'}, timeout=15)
+    except requests.RequestException as e:
+        return jsonify({"error": f"Could not reach Immich: {e}"}), 502
+
+    if upstream.status_code != 200:
+        return jsonify({"error": f"Immich returned {upstream.status_code}"}), 502
+
+    return _no_store(send_file(io.BytesIO(upstream.content),
+                               mimetype=upstream.headers.get('Content-Type', 'image/jpeg')))
+
 @app.route('/setting', methods=['GET', 'POST'])
 def settings():
     global current_config, last_battery_voltage, last_battery_update
@@ -808,8 +869,23 @@ def process_and_download():
         
         # Convert to C code
         processed_image.seek(0)
-        c_code = convert_to_c_code_in_memory(Image.open(processed_image))
-        
+        panel_image = Image.open(processed_image)
+        c_code = convert_to_c_code_in_memory(panel_image)
+
+        # Remember what the frame is about to show, so /setting can display it.
+        # This is the dithered result, not the original, so the preview matches
+        # what is physically on the panel.
+        try:
+            preview_buffer = io.BytesIO()
+            panel_image.save(preview_buffer, 'PNG', optimize=True)
+            last_photo['preview_png'] = preview_buffer.getvalue()
+            last_photo['asset_id'] = asset_id
+            last_photo['shown_at'] = datetime.now()
+        except Exception as e:
+            # A preview is a nicety; never fail the device's download over it
+            print(f"Could not store preview image: {e}")
+
+
         # Build Immich photo URL for NFC tag
         # Immich web UI URL format: {base_url}/albums/{album_id}/photos/{asset_id}
         photo_url = f"https://my.immich.app/albums/{albumid}/photos/{asset_id}"
