@@ -98,7 +98,15 @@ last_battery_update = 0
 last_photo = {
     'asset_id': None,
     'shown_at': None,
-    'preview_png': None,  # the dithered 800x480 image, exactly as sent to the panel
+}
+
+# The asset the frame will be handed on its next wake-up. Chosen in advance so the
+# settings page can show what is coming and offer to swap it for another.
+next_photo = {
+    'asset': None,
+    'album': None,
+    'album_id': None,
+    'chosen_at': None,
 }
 
 # Rolling record of what the frame asked for and what changed on the server.
@@ -141,6 +149,103 @@ def client_ip():
     """ The caller's address, honouring a proxy header when one is present """
     forwarded = request.headers.get('X-Forwarded-For', '')
     return forwarded.split(',')[0].strip() if forwarded else request.remote_addr
+
+class ImmichError(Exception):
+    """ Carries the message and HTTP status the caller should report """
+
+    def __init__(self, message, status=500):
+        super().__init__(message)
+        self.message = message
+        self.status = status
+
+def resolve_album_id():
+    """ Look up the configured album, raising ImmichError if it cannot be used """
+    response = requests.get(f"{url}/api/albums", headers=headers)
+    if response.status_code != 200:
+        raise ImmichError("Failed to fetch albums")
+
+    albumid = next((item['id'] for item in response.json()
+                    if item['albumName'] == albumname), None)
+    if not albumid:
+        raise ImmichError("Album not found", 404)
+    return albumid
+
+def list_album_assets(albumid):
+    """
+    Every asset in the album.
+
+    Immich v3 breaking change: GET /api/albums/{id} no longer returns the
+    'assets' property, so this goes through the paginated search endpoint.
+    """
+    assets = []
+    page = 1
+    while True:
+        search_body = {
+            "albumIds": [albumid],
+            "size": 1000,
+            "page": page,
+            "withExif": True,
+        }
+        response = requests.post(f"{url}/api/search/metadata", headers=headers, json=search_body)
+        if response.status_code != 200:
+            raise ImmichError("Failed to fetch album details")
+
+        search_result = response.json().get('assets', {})
+        assets.extend(search_result.get('items', []))
+
+        next_page = search_result.get('nextPage')
+        if not next_page:
+            break
+        page = int(next_page)
+
+    if not assets:
+        raise ImmichError("No images found in album", 404)
+    return assets
+
+def _taken_at(asset):
+    return asset.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00')
+
+def select_asset(assets):
+    """
+    Choose which asset to show next, honouring image_order and the history in
+    tracking.txt. The history is reset when the album runs out, or when a newer
+    photo turns up while ordering by date.
+    """
+    order = current_config['immich']['image_order']
+    shown = load_downloaded_images()
+
+    if order == 'newest':
+        latest_id = max(assets, key=_taken_at)['id']
+        if not shown or latest_id not in shown:
+            reset_tracking_file(reason='newer_photo')
+            remaining = sorted(assets, key=_taken_at, reverse=True)
+        else:
+            remaining = sorted([a for a in assets if a['id'] not in shown],
+                               key=_taken_at, reverse=True)
+        if not remaining:
+            # Everything has been shown and nothing is newer: begin again rather
+            # than indexing an empty list, which used to 500 the device
+            reset_tracking_file(reason='album_exhausted')
+            remaining = sorted(assets, key=_taken_at, reverse=True)
+        return remaining[0]
+
+    remaining = [a for a in assets if a['id'] not in shown]
+    if not remaining:
+        reset_tracking_file(reason='album_exhausted')
+        remaining = assets
+    return random.choice(remaining)
+
+def refresh_next_photo():
+    """ Choose and remember the photo the frame will get next. Raises ImmichError. """
+    albumid = resolve_album_id()
+    asset = select_asset(list_album_assets(albumid))
+    next_photo.update({'asset': asset, 'album': albumname,
+                       'album_id': albumid, 'chosen_at': datetime.now()})
+    return asset
+
+def photo_link(asset_id):
+    """ The asset in the configured server's web UI, so the link works on the LAN """
+    return f"{url.rstrip('/')}/photos/{asset_id}"
 
 def load_downloaded_images():
     """ Load downloaded image ID from tracking.txt """
@@ -623,7 +728,7 @@ def inject_current_photo():
         'album': albumname,
         # Link to the configured server rather than my.immich.app, so the link
         # opens the web UI on the LAN instead of needing an internet round trip
-        'link': f"{url.rstrip('/')}/photos/{last_photo['asset_id']}",
+        'link': photo_link(last_photo['asset_id']),
         'shown_at': shown_at.strftime('%Y-%m-%d %H:%M') if shown_at else '',
     }}
 
@@ -710,26 +815,14 @@ def read_log():
     entries.reverse()
     return _no_store(jsonify({'entries': entries}))
 
-@app.route('/preview')
-def preview_current():
-    """ The dithered image currently on the panel """
-    if not last_photo['preview_png']:
-        return jsonify({"error": "No photo has been sent to the frame yet"}), 404
-    return _no_store(send_file(io.BytesIO(last_photo['preview_png']), mimetype='image/png'))
-
-@app.route('/preview/original')
-def preview_original():
+def proxy_thumbnail(asset_id):
     """
-    The untouched photo, proxied from Immich.
+    An asset's thumbnail, proxied from Immich.
 
     It has to be proxied rather than linked: thumbnails need the API key, which
-    only the server holds. Immich's thumbnail is also the right thing to ask for
-    because originals may be HEIC or RAW, which browsers cannot display.
+    only the server holds. A thumbnail is also the right thing to ask for because
+    originals may be HEIC or RAW, which browsers cannot display.
     """
-    asset_id = last_photo['asset_id']
-    if not asset_id:
-        return jsonify({"error": "No photo has been sent to the frame yet"}), 404
-
     try:
         upstream = requests.get(f"{url}/api/assets/{asset_id}/thumbnail",
                                 headers=headers, params={'size': 'preview'}, timeout=15)
@@ -741,6 +834,60 @@ def preview_original():
 
     return _no_store(send_file(io.BytesIO(upstream.content),
                                mimetype=upstream.headers.get('Content-Type', 'image/jpeg')))
+
+@app.route('/preview/original')
+def preview_original():
+    """ The photo the frame is showing now """
+    if not last_photo['asset_id']:
+        return jsonify({"error": "No photo has been sent to the frame yet"}), 404
+    return proxy_thumbnail(last_photo['asset_id'])
+
+@app.route('/preview/next')
+def preview_next():
+    """ The photo the frame will be given on its next wake-up """
+    if not next_photo['asset']:
+        return jsonify({"error": "No photo has been chosen yet"}), 404
+    return proxy_thumbnail(next_photo['asset']['id'])
+
+@app.route('/next', methods=['GET', 'POST'])
+def upcoming_photo():
+    """
+    What the frame will show next. GET chooses one only if none is remembered;
+    POST always picks a different one, which is what the "swap" button uses.
+    """
+    try:
+        if request.method == 'POST' or not next_photo['asset'] or next_photo['album'] != albumname:
+            refresh_next_photo()
+    except ImmichError as error:
+        log_event('error', where='next', message=error.message, ip=client_ip())
+        return _no_store(jsonify({"error": error.message})), error.status
+
+    asset = next_photo['asset']
+    if not asset:
+        return _no_store(jsonify({"error": "No photo could be chosen"})), 404
+
+    if request.method == 'POST':
+        log_event('photo_swapped', ip=client_ip(), asset_id=asset['id'], album=albumname)
+
+    chosen_at = next_photo['chosen_at']
+    return _no_store(jsonify({
+        'asset_id': asset['id'],
+        'album': next_photo['album'],
+        'link': photo_link(asset['id']),
+        'chosen_at': chosen_at.strftime('%Y-%m-%d %H:%M') if chosen_at else None,
+    }))
+
+@app.route('/log/clear', methods=['POST'])
+def clear_log():
+    """ Empty the event log, then record that it happened """
+    try:
+        with log_lock:
+            open(log_file, 'w').close()
+    except Exception as error:
+        return _no_store(jsonify({"error": str(error)})), 500
+
+    log_event('log_cleared', ip=client_ip())
+    return _no_store(jsonify({'cleared': True}))
 
 @app.route('/setting', methods=['GET', 'POST'])
 def settings():
@@ -902,88 +1049,22 @@ def process_and_download():
             log_event('error', where='download', message="Immich URL or Album not configured", ip=client_ip())
             return jsonify({"error": "Immich URL or Album not configured"}), 500
             
-        # Load list of downloaded images
-        downloaded_images = load_downloaded_images()
-            
-        # Get album list
-        response = requests.get(f"{current_url}/api/albums", headers=headers)
-        if response.status_code != 200:
-            log_event('error', where='download', message="Failed to fetch albums", ip=client_ip())
-            return jsonify({"error": "Failed to fetch albums"}), 500
-        
-        # Find specified album
-        data = response.json()
-        albumid = next((item['id'] for item in data if item['albumName'] == current_albumname), None)
-        if not albumid:
-            log_event('error', where='download', message="Album not found", ip=client_ip())
-            return jsonify({"error": "Album not found"}), 404
+        # Use the photo already chosen for this wake-up when there is one, so the
+        # frame gets exactly what the settings page was showing as "next".
+        if next_photo['asset'] and next_photo['album'] == current_albumname:
+            selected_image = next_photo['asset']
+            albumid = next_photo['album_id']
+        else:
+            albumid = resolve_album_id()
+            selected_image = select_asset(list_album_assets(albumid))
 
-        # Get photos in the album
-        # Immich v3 breaking change: GET /api/albums/{id} no longer returns the
-        # 'assets' property. Album assets must now be fetched via the paginated
-        # POST /api/search/metadata endpoint (filtered by albumIds).
-        album_assets = []
-        page = 1
-        while True:
-            search_body = {
-                "albumIds": [albumid],
-                "size": 1000,
-                "page": page,
-                "withExif": True,
-            }
-            response = requests.post(f"{url}/api/search/metadata", headers=headers, json=search_body)
-            if response.status_code != 200:
-                log_event('error', where='download', message="Failed to fetch album details", ip=client_ip())
-                return jsonify({"error": "Failed to fetch album details"}), 500
+        # Handed over, so it is no longer "next"; the settings page asks for a
+        # fresh one the next time it loads.
+        next_photo.update({'asset': None, 'album': None, 'album_id': None, 'chosen_at': None})
 
-            search_result = response.json().get('assets', {})
-            album_assets.extend(search_result.get('items', []))
-
-            next_page = search_result.get('nextPage')
-            if not next_page:
-                break
-            page = int(next_page)
-
-        if not album_assets:
-            log_event('error', where='download', message="No images found in album", ip=client_ip())
-            return jsonify({"error": "No images found in album"}), 404
-
-        # Keep the same downstream shape as the previous album-details response
-        data = {'assets': album_assets}
-
-        # Get display order setting
-        image_order = current_config['immich']['image_order']
-
-        if image_order == 'newest':
-            # Check if new photos have been added
-            latest_photo = max(data['assets'], key=lambda x: x.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00'))
-            latest_id = latest_photo['id']
-            
-            # Reset tracking file if it's empty or latest photo is not in downloaded list
-            downloaded_images = load_downloaded_images()
-            if not downloaded_images or latest_id not in downloaded_images:
-                reset_tracking_file(reason='newer_photo')
-                # Sort photos by capture time
-                sorted_assets = sorted(data['assets'], 
-                                    key=lambda x: x.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00'),
-                                    reverse=True)
-                remaining_images = sorted_assets
-            else:
-                # Sort undownloaded photos by time
-                remaining_images = [img for img in data['assets'] if img['id'] not in downloaded_images]
-                remaining_images.sort(key=lambda x: x.get('exifInfo', {}).get('dateTimeOriginal', '1970-01-01T00:00:00'),
-                                   reverse=True)
-        else:  # random order
-            remaining_images = [img for img in data['assets'] if img['id'] not in downloaded_images]
-            if not remaining_images:
-                reset_tracking_file(reason='album_exhausted')
-                remaining_images = data['assets']
-
-        # Select photo
-        selected_image = remaining_images[0] if image_order == 'newest' else random.choice(remaining_images)
         asset_id = selected_image['id']
-        
-        # Record downloaded image
+
+        # Record it as shown so it is not repeated
         save_downloaded_image(asset_id)
 
         # Download image to memory
@@ -1010,21 +1091,10 @@ def process_and_download():
         
         # Convert to C code
         processed_image.seek(0)
-        panel_image = Image.open(processed_image)
-        c_code = convert_to_c_code_in_memory(panel_image)
+        c_code = convert_to_c_code_in_memory(Image.open(processed_image))
 
-        # Remember what the frame is about to show, so /setting can display it.
-        # This is the dithered result, not the original, so the preview matches
-        # what is physically on the panel.
-        try:
-            preview_buffer = io.BytesIO()
-            panel_image.save(preview_buffer, 'PNG', optimize=True)
-            last_photo['preview_png'] = preview_buffer.getvalue()
-            last_photo['asset_id'] = asset_id
-            last_photo['shown_at'] = datetime.now()
-        except Exception as e:
-            # A preview is a nicety; never fail the device's download over it
-            print(f"Could not store preview image: {e}")
+        # Remember what the frame is showing, so /setting can display it
+        last_photo.update({'asset_id': asset_id, 'shown_at': datetime.now()})
 
 
         # Build Immich photo URL for NFC tag
@@ -1051,6 +1121,9 @@ def process_and_download():
 
         return response
 
+    except ImmichError as e:
+        log_event('error', where='download', message=e.message, ip=client_ip())
+        return jsonify({"error": e.message}), e.status
     except Exception as e:
         log_event('error', where='download', message=str(e), ip=client_ip())
         return jsonify({"error": str(e)}), 500
@@ -1125,9 +1198,8 @@ def get_sleep_duration():
             next_wakeup = sleep_end
         sleep_ms = int((next_wakeup - current_time).total_seconds() * 1000)
     
-    log_event('sleep', ip=client_ip(), seconds=sleep_ms // 1000,
-              next_wakeup=next_wakeup.strftime("%Y-%m-%d %H:%M"))
-
+    # Deliberately not logged: /sleep runs on every wake-up and its answer is
+    # implied by the check-in, so it only crowded out the entries that matter.
     return jsonify({
         "current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
         "next_wakeup": next_wakeup.strftime("%Y-%m-%d %H:%M:%S"),

@@ -667,8 +667,7 @@
         /* ---------- system log ---------- */
 
         .log-refresh {
-            /* pushed to the far end of the card heading */
-            margin-left: auto;
+            width: 30px;
             width: 30px;
             height: 30px;
             padding: 0;
@@ -678,6 +677,11 @@
             background-color: transparent;
             border: 1px solid var(--line-strong);
             color: var(--ink-2);
+        }
+
+        /* only the first of the pair pushes away from the title */
+        .card-head .log-refresh:first-of-type {
+            margin-left: auto;
         }
 
         .log-refresh:hover {
@@ -1020,26 +1024,52 @@
             <div class="photo-body">
                 <a class="photo-link" href="{{ photo.link }}" target="_blank" rel="noopener noreferrer"
                     data-i18n-title="photo.open" title="Open in Immich">
-                    <img id="photoPreview" class="photo-preview" alt=""
-                        src="preview"
-                        data-frame-src="preview"
-                        data-original-src="preview/original">
+                    <img id="photoPreview" class="photo-preview" alt="" src="preview/original">
                 </a>
                 <div class="photo-meta">
                     <div class="photo-facts">
                         <span class="photo-album">{{ photo.album }}</span>
                         <span class="photo-time">{{ photo.shown_at }}</span>
                     </div>
-                    <div class="segmented">
-                        <button type="button" id="viewFrame" class="seg is-active" data-i18n="photo.frame"
-                            onclick="showPreview('frame')">Frame view</button>
-                        <button type="button" id="viewOriginal" class="seg" data-i18n="photo.original"
-                            onclick="showPreview('original')">Original</button>
-                    </div>
                 </div>
             </div>
         </div>
         {% endif %}
+
+        <div class="card" id="nextCard" hidden>
+            <div class="card-head">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M4 6h10M4 12h7M4 18h10" />
+                    <path d="M15 15l4 3-4 3" />
+                    <path d="M19 18h-4" />
+                </svg>
+                <h2 class="card-title" data-i18n="card.nextUp">Up Next</h2>
+                <button type="button" class="log-refresh" onclick="swapNextPhoto()" data-i18n-title="photo.swap"
+                    data-i18n-aria-label="photo.swap" title="Show a different one" aria-label="Show a different one">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 7h6l3 5 3-5h3" />
+                        <path d="M18 4l3 3-3 3" />
+                        <path d="M3 17h6l3-5" />
+                        <path d="M18 14l3 3-3 3" />
+                        <path d="M15 17h6" />
+                    </svg>
+                </button>
+            </div>
+            <div class="photo-body">
+                <a class="photo-link" id="nextLink" target="_blank" rel="noopener noreferrer"
+                    data-i18n-title="photo.open" title="Open in Immich">
+                    <img id="nextPreview" class="photo-preview" alt="">
+                </a>
+                <div class="photo-meta">
+                    <div class="photo-facts">
+                        <span class="photo-album" id="nextAlbum"></span>
+                        <span class="photo-time" id="nextChosen"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <form id="settingsForm" method="POST" onsubmit="handleSubmit(event)">
             <div class="card">
@@ -1245,6 +1275,13 @@
                         <path d="M20 5v6h-6" />
                     </svg>
                 </button>
+                <button type="button" class="log-refresh" onclick="clearLog()" data-i18n-title="log.clear"
+                    title="Clear" data-i18n-aria-label="log.clear" aria-label="Clear">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13" />
+                    </svg>
+                </button>
             </div>
             <div class="log-body" id="logBody"></div>
         </div>
@@ -1279,8 +1316,6 @@
                 'theme.light': 'Theme: light',
                 'theme.dark': 'Theme: dark',
                 'card.nowShowing': 'Now Showing',
-                'photo.frame': 'Frame view',
-                'photo.original': 'Original',
                 'photo.open': 'Open in Immich',
                 'photo.originalFailed': 'Could not load the original from Immich',
                 'status.immich': 'Immich',
@@ -1290,12 +1325,16 @@
                 'log.empty': 'Nothing recorded yet',
                 'log.failed': 'Could not load the log',
                 'event.checkin': 'Frame checked in',
-                'event.sleep': 'Sleep scheduled',
                 'event.settingsSaved': 'Settings saved',
                 'event.configReloaded': 'Config reloaded from disk',
                 'event.trackingReset': 'Photo history reset',
                 'event.error': 'Error',
                 'event.startup': 'Server started',
+                'card.nextUp': 'Up Next',
+                'photo.swap': 'Show a different one',
+                'log.clear': 'Clear the log',
+                'event.photoSwapped': 'Next photo swapped',
+                'event.logCleared': 'Log cleared',
 'status.checking': 'Checking…',
                 'status.connected': 'Connected',
                 'status.albumMissing': 'Album not found',
@@ -1361,8 +1400,6 @@
                 'theme.light': '外觀：淺色',
                 'theme.dark': '外觀：深色',
                 'card.nowShowing': '目前顯示',
-                'photo.frame': '相框畫面',
-                'photo.original': '原圖',
                 'photo.open': '在 Immich 開啟',
                 'photo.originalFailed': '無法從 Immich 載入原圖',
                 'status.immich': 'Immich',
@@ -1372,12 +1409,16 @@
                 'log.empty': '尚無紀錄',
                 'log.failed': '無法載入紀錄',
                 'event.checkin': '相框回報',
-                'event.sleep': '安排睡眠',
                 'event.settingsSaved': '儲存設定',
                 'event.configReloaded': '重新載入設定檔',
                 'event.trackingReset': '重置播放紀錄',
                 'event.error': '錯誤',
                 'event.startup': '伺服器啟動',
+                'card.nextUp': '下一張',
+                'photo.swap': '換一張',
+                'log.clear': '清除紀錄',
+                'event.photoSwapped': '更換下一張',
+                'event.logCleared': '清除紀錄',
 'status.checking': '檢查中…',
                 'status.connected': '已連線',
                 'status.albumMissing': '找不到相簿',
@@ -1443,8 +1484,6 @@
                 'theme.light': '外观：浅色',
                 'theme.dark': '外观：深色',
                 'card.nowShowing': '当前显示',
-                'photo.frame': '相框画面',
-                'photo.original': '原图',
                 'photo.open': '在 Immich 打开',
                 'photo.originalFailed': '无法从 Immich 加载原图',
                 'status.immich': 'Immich',
@@ -1454,12 +1493,16 @@
                 'log.empty': '暂无记录',
                 'log.failed': '无法加载日志',
                 'event.checkin': '相框回报',
-                'event.sleep': '安排睡眠',
                 'event.settingsSaved': '保存设置',
                 'event.configReloaded': '重新加载配置文件',
                 'event.trackingReset': '重置播放记录',
                 'event.error': '错误',
                 'event.startup': '服务器启动',
+                'card.nextUp': '下一张',
+                'photo.swap': '换一张',
+                'log.clear': '清除日志',
+                'event.photoSwapped': '更换下一张',
+                'event.logCleared': '清除日志',
 'status.checking': '检查中…',
                 'status.connected': '已连接',
                 'status.albumMissing': '找不到相册',
@@ -1525,8 +1568,6 @@
                 'theme.light': 'テーマ：ライト',
                 'theme.dark': 'テーマ：ダーク',
                 'card.nowShowing': '表示中',
-                'photo.frame': 'フレーム表示',
-                'photo.original': '元画像',
                 'photo.open': 'Immich で開く',
                 'photo.originalFailed': 'Immich から元画像を読み込めませんでした',
                 'status.immich': 'Immich',
@@ -1536,12 +1577,16 @@
                 'log.empty': '記録はまだありません',
                 'log.failed': 'ログを読み込めません',
                 'event.checkin': 'フレームから通信',
-                'event.sleep': 'スリープ設定',
                 'event.settingsSaved': '設定を保存',
                 'event.configReloaded': '設定ファイルを再読み込み',
                 'event.trackingReset': '表示履歴をリセット',
                 'event.error': 'エラー',
                 'event.startup': 'サーバー起動',
+                'card.nextUp': '次の写真',
+                'photo.swap': '別の写真にする',
+                'log.clear': 'ログを消去',
+                'event.photoSwapped': '次の写真を変更',
+                'event.logCleared': 'ログを消去',
 'status.checking': '確認中…',
                 'status.connected': '接続済み',
                 'status.albumMissing': 'アルバムが見つかりません',
@@ -1688,16 +1733,39 @@
             renderLog();
         }
 
-        // Swap the preview between the dithered panel image and the Immich original
-        function showPreview(which) {
-            const img = document.getElementById('photoPreview');
-            if (!img) {
+        /*
+         * The photo the frame will get next. It is chosen server-side in advance so
+         * this can show it; swapping asks the server to pick a different one.
+         */
+        function renderNext(info) {
+            const card = document.getElementById('nextCard');
+            if (!info || !info.asset_id) {
+                card.hidden = true;
                 return;
             }
-            const wantsOriginal = which === 'original';
-            img.src = wantsOriginal ? img.dataset.originalSrc : img.dataset.frameSrc;
-            document.getElementById('viewFrame').classList.toggle('is-active', !wantsOriginal);
-            document.getElementById('viewOriginal').classList.toggle('is-active', wantsOriginal);
+            document.getElementById('nextLink').href = info.link;
+            document.getElementById('nextAlbum').textContent = info.album || '';
+            document.getElementById('nextChosen').textContent = info.chosen_at || '';
+            // The URL is stable, so a swap needs a cache-buster to actually reload
+            document.getElementById('nextPreview').src = 'preview/next?t=' + Date.now();
+            card.hidden = false;
+        }
+
+        function loadNext(method) {
+            fetch('next', { method: method || 'GET', cache: 'no-store' })
+                .then(response => response.ok ? response.json() : Promise.reject(new Error(response.status)))
+                .then(renderNext)
+                .catch(() => renderNext(null));
+        }
+
+        function swapNextPhoto() {
+            loadNext('POST');
+        }
+
+        function clearLog() {
+            fetch('log/clear', { method: 'POST', cache: 'no-store' })
+                .then(() => loadLog())
+                .catch(() => loadLog());
         }
 
         function setLanguage(lang) {
@@ -1868,8 +1936,9 @@
          */
         const LOG_EVENTS = {
             checkin: 'event.checkin',
-            sleep: 'event.sleep',
             settings_saved: 'event.settingsSaved',
+            photo_swapped: 'event.photoSwapped',
+            log_cleared: 'event.logCleared',
             config_reloaded: 'event.configReloaded',
             tracking_reset: 'event.trackingReset',
             error: 'event.error',
@@ -1897,13 +1966,6 @@
                 }
                 if (entry.rssi) {
                     parts.push(entry.rssi + ' dBm');
-                }
-            } else if (entry.event === 'sleep') {
-                if (entry.seconds) {
-                    parts.push(Math.round(entry.seconds / 60) + ' min');
-                }
-                if (entry.next_wakeup) {
-                    parts.push(entry.next_wakeup);
                 }
             } else if (entry.event === 'settings_saved') {
                 if (entry.changes) {
@@ -1995,18 +2057,16 @@
             document.querySelectorAll('input[type="range"]').forEach(updateSliderValue);
             fetchStatus();
             loadLog();
+            loadNext();
 
-            // The panel image is served from memory and cannot really fail, so an
-            // error means Immich would not give us the original. Say so and fall back.
-            const preview = document.getElementById('photoPreview');
-            if (preview) {
-                preview.addEventListener('error', () => {
-                    if (preview.src.indexOf(preview.dataset.originalSrc) !== -1) {
-                        showNotification(t('photo.originalFailed'));
-                        showPreview('frame');
-                    }
+            // Both previews are proxied from Immich, so a failure there is the
+            // likely cause; say so rather than leaving a broken image.
+            document.querySelectorAll('.photo-preview').forEach(image => {
+                image.addEventListener('error', () => {
+                    image.removeAttribute('src');
+                    showNotification(t('photo.originalFailed'));
                 });
-            }
+            });
         });
 
         function showResetConfirmation() {
