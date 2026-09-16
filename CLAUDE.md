@@ -60,7 +60,7 @@ This contract is the thing to be careful about — both sides must change togeth
 
 `/download` → pick asset → `scale_img_in_memory()` → `convert_to_c_code_in_memory()`. Everything is in-memory `BytesIO`.
 
-1. **Asset selection.** Album assets are fetched via paginated `POST /api/search/metadata` filtered by `albumIds` — *not* `GET /api/albums/{id}`, which stopped returning `assets` in Immich v3. `tracking.txt` records which assets have been shown: line 1 is the album name (changing albums resets the file), remaining lines are asset IDs. `image_order` is `random` (reset when exhausted) or `newest` (reset when a newer photo appears).
+1. **Asset selection.** Album assets are fetched via paginated `POST /api/search/metadata` filtered by `albumIds` and `type: IMAGE` (a video in the album would otherwise reach PIL, which can only say `cannot identify image file`) — *not* `GET /api/albums/{id}`, which stopped returning `assets` in Immich v3. `tracking.txt` records which assets have been shown: line 1 is the album name (changing albums resets the file), remaining lines are asset IDs. `image_order` is `random` (reset when exhausted) or `newest` (reset when a newer photo appears).
 2. **Scale + enhance.** `cpy.load_scaled()` rotates and either letterboxes (`fit`) or center-crops (`fill`) to 800x480, then PIL `ImageEnhance` applies `enhanced` (saturation) and `contrast`.
 3. **Quantize.** `cpy.convert_image()` does Floyd-Steinberg dithering to six pure-RGB colors, with `strength` scaling the error diffusion. The commented-out PIL `.quantize()` block in `scale_img_in_memory` is the superseded version.
 4. **Pack.** `depalette_image()` nearest-matches each pixel against the module-level `palette` (the *measured* panel colors, e.g. yellow is `(255,243,56)`) and applies `indices[indices > 3] += 1` to line up with the panel's color codes in `Arduino/epd7in3e.h`. Then two 4-bit indices are packed per byte.
@@ -94,3 +94,7 @@ Deep sleep wakes on the timer or on GPIO 2 going low (`ext1`). `epd.Sleep()` bef
 ## Conventions
 
 Everything committed to this repo is written in **English** — code, comments, identifiers, commit messages, docs — because changes may be submitted upstream as merge requests. Pre-existing Traditional Chinese comments in `cpy.pyx` and `Arduino/button.h` are the original author's; leave them alone, but write new comments in English.
+
+Commit messages follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): a `<type>[optional scope]: <description>` subject, with `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build` (dependencies and build tooling) and `chore` as the usual types. Breaking changes take a `!` after the type, or a `BREAKING CHANGE:` footer.
+
+**Both subject and body stay in English here**, per the English-only rule above. The sibling repos under `_NAS_Docker\` use the same Conventional Commits format but keep Traditional Chinese descriptions and bodies — do not copy their style into this repo. The body should still explain *why* and how the change was verified.
