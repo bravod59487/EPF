@@ -402,7 +402,7 @@ def process_and_download():
 
         response = send_file(c_code, mimetype='text/plain', as_attachment=True,
                              download_name=f"image_{asset_id}.c")
-        # Deep link for writing an NFC tag; the firmware does not read it yet
+        # Deep link the firmware writes to the ST25DV NFC tag (Arduino/nfc_writer.cpp)
         response.headers['X-Photo-Url'] = \
             f"https://my.immich.app/albums/{albumid}/photos/{asset_id}"
 
