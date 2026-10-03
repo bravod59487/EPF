@@ -23,7 +23,7 @@ Two parts live in this repository and talk over HTTP:
 
 - **Immich as the photo source.** Drop photos into an album and they appear on the frame; nothing has to be copied or converted by hand. HEIC and RAW originals are handled on the server.
 - **Server-side processing.** Scaling, rotation, fit or fill, saturation, contrast and Floyd-Steinberg dithering all run on the server. The dithering core is written in Cython.
-- **Low power.** The ESP32 only wakes to fetch and show a photo. The panel is put to sleep before hibernating; the original author measured around 16 uA in deep sleep.
+- **Low power.** The ESP32 only wakes to fetch and show a photo, and the server chooses and renders the following photo right after handing one over, so a wake-up is about 36 seconds, 30 of which are the panel refreshing. The panel is put to sleep before hibernating; the original author measured around 16 uA in deep sleep.
 - **Settings page.** Immich URL and album, rotation, fit or fill, random or newest-first ordering, enhancement sliders, quiet hours and wake-up interval, all saved from the browser. Shows the current and the next photo, with a button to swap the next one. Available in English, Traditional Chinese, Simplified Chinese and Japanese.
 - **Status and history.** The page shows whether Immich is reachable, whether the album still exists, when the frame last checked in and its battery level, plus a system log of check-ins, settings changes and errors.
 - **Low-battery notifications** over Telegram or LINE Messaging API, linked from the settings page. A service only counts as linked once a test message has actually been delivered.
@@ -110,7 +110,7 @@ The two the firmware uses:
 
 | Endpoint | Used by | Purpose |
 | --- | --- | --- |
-| `GET /download` | frame | The next photo as a hex byte stream. Request header `batteryCap` carries the battery voltage in millivolts; response header `X-Photo-Url` carries the photo's Immich link for the NFC tag. |
+| `GET /download` | frame | The next photo as a hex byte stream, prepared in advance so the frame is not kept awake while the album is listed and the image processed. Request header `batteryCap` carries the battery voltage in millivolts; response header `X-Photo-Url` carries the photo's Immich link for the NFC tag. |
 | `GET /sleep` | frame | `{current_time, next_wakeup, sleep_duration}`; `sleep_duration` is in milliseconds and already accounts for the quiet hours. |
 
 The rest serve the settings page: `/setting` (GET renders, POST saves), `/status`, `/log`, `/log/clear`, `/next` (GET shows, POST re-chooses), `/preview/original`, `/preview/next`, and `/notify/bind`, `/notify/unbind`, `/notify/channels`, `/notify/test`. The settings page has no authentication, so keep the port on your LAN or behind a reverse proxy that adds some.
@@ -134,21 +134,23 @@ pio run -t upload       # flash over USB
 pio device monitor      # serial output at 115200 baud
 ```
 
-`platformio.ini` pulls in the ESP32-C6 board support (the pioarduino fork of the Espressif platform, since the upstream one does not support the C6 yet), the `min_spiffs` partition table and all libraries: ArduinoJson 7, AsyncTCP and ESPAsyncWebServer (ESP32Async forks), NTPClient and STM32duino ST25DV.
+`platformio.ini` pulls in the ESP32-C6 board support (the pioarduino fork of the Espressif platform, since the upstream one does not support the C6 yet), the `min_spiffs` partition table and all libraries: ArduinoJson 7, AsyncTCP and ESPAsyncWebServer (ESP32Async forks), NTPClient, STM32duino ST25DV and QRCode.
+
+`pio run -t upload` writes only the bootloader, partition table and application, so the Wi-Fi and server settings stored in NVS survive an update. The build also produces `firmware.factory.bin`, a single image for tools that flash from address 0 such as [web.esphome.io](https://web.esphome.io/); flashing it erases the whole flash including those settings, and the frame comes up in setup mode afterwards. The frame's USB port only exists while it is awake, so press the button (or hold it for the setup screen) right before uploading.
 
 ### Build with the Arduino IDE
 
 1. Install the ESP32 board package (3.x) and select **DFRobot FireBeetle 2 ESP32-C6**.
 2. Copy the `Arduino` folder somewhere and rename it to `epd7in3e`, so it matches `epd7in3e.ino`.
-3. Install from the Library Manager: ArduinoJson (7.x), Async TCP and ESP Async WebServer (the ESP32Async versions), STM32duino ST25DV.
+3. Install from the Library Manager: ArduinoJson (7.x), Async TCP and ESP Async WebServer (the ESP32Async versions), STM32duino ST25DV, QRCode (Richard Moore).
 4. Choose a partition scheme with at least 1.9 MB of app space (for example "Minimal SPIFFS"), then upload.
 
 The NFC library is required to compile even if no tag is fitted; at runtime the firmware simply skips NFC writes when it cannot find one.
 
 ### First-time setup
 
-1. Power the frame and hold the button for about 3 seconds while it boots. The serial monitor prints `long press` and the ESP32 starts an access point named `ESP32_ePAPER`.
-2. Connect to it; the setup page opens automatically (or browse to `http://4.3.2.1`).
+1. Power the frame and hold the button for about 3 seconds while it boots. The serial monitor prints `long press`, the panel shows a setup screen with the network name, the address and two QR codes, and the ESP32 starts an access point named `ESP32_ePAPER`. A frame with no saved network shows the same screen on its own.
+2. Connect to it (scan the first QR code, or pick the network by hand); the setup page opens automatically. If it does not, scan the second code or browse to `http://4.3.2.1`. The access point closes after 5 minutes.
 3. Pick your WiFi network, enter its password, and enter the server URL, for example `http://192.168.1.10:15001`. Up to five networks are remembered and tried in turn.
 4. Save. The frame connects, fetches the first photo and goes to sleep.
 
@@ -158,7 +160,10 @@ To change the settings later, hold the button during a reboot the same way. Save
 
 - Wakes on the schedule the server returns, or immediately on a short button press.
 - Below 3.05 V the frame clears the screen and sleeps for 24 hours to protect the battery.
-- A server error is retried once; if the download fails or no schedule is received, the frame sleeps for 24 hours and tries again.
+- A server error (HTTP 500) is retried up to five times, ten seconds apart within the same wake-up. If the photo arrives but no schedule does, the frame sleeps for an hour.
+- When a wake-up ends without a new photo (no Wi-Fi, server unreachable, download rejected), the frame keeps the current photo and quietly tries again after 15, 30 and then 60 minutes. If the fourth attempt also fails it draws an error screen explaining what went wrong, with the server address, network, battery level and when it will try next, and from then on checks every 6 hours to spare the battery. A button press always retries at once, restarts the schedule from 15 minutes, and shows the error screen if that attempt fails too. The first successful photo clears the count.
+- Right after first setup the server answers with an error until an album is configured on the settings page. Once it is, either wait for the next retry or press the button to fetch the first photo immediately.
+- When the battery is empty the panel shows a charging reminder instead of going blank.
 - If the panel does not respond within 60 seconds the firmware gives up on the refresh instead of hanging.
 - With an NFC tag fitted, the tag reads "Updating..." while a new photo is being fetched and then carries the link to the photo on display. The tag is powered off during deep sleep.
 
