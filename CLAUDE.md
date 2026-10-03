@@ -75,7 +75,7 @@ Three palettes must stay consistent: the pure-RGB one inside `cpy.pyx:convert_im
 
 ## Firmware: build and flow
 
-Arduino IDE, board FireBeetle 2 ESP32-C6. The folder must be renamed to `epd7in3e` to match the `.ino`. Libraries: ArduinoJson 7, AsyncTCP and ESPAsyncWebServer (ESP32Async forks), STM32duino ST25DV. `Arduino/platformio.ini` (pioarduino platform fork, `min_spiffs` partition table) is the PlatformIO alternative. Pin map is in the comment block at the top of `epd7in3e.ino`; NFC (ST25DV) uses I2C on GPIO 19/20 and is powered from GPIO 4, which is held LOW through deep sleep. The captive-portal HTML lives in `Arduino/scratch/index.html`; run `scratch/compress_html.py` to regenerate `WifiCaptivePage.h`.
+Arduino IDE, board FireBeetle 2 ESP32-C6. The folder must be renamed to `epd7in3e` to match the `.ino`. Libraries: ArduinoJson 7, AsyncTCP and ESPAsyncWebServer (ESP32Async forks), STM32duino ST25DV. `Arduino/platformio.ini` (pioarduino platform fork, `min_spiffs` partition table) is the PlatformIO alternative. Pin map is in the comment block at the top of `epd7in3e.ino`; NFC (ST25DV) uses I2C on GPIO 19/20 and is powered from GPIO 4, which is held LOW through deep sleep. The captive-portal HTML lives in `Arduino/AP_webpage_src/index.html`; run `AP_webpage_src/compress_html.py` to regenerate `WifiCaptivePage.h`.
 
 `setup()` runs once per wake and never returns to `loop()`:
 

@@ -30,4 +30,4 @@ if match:
         f.write(decompressed)
     
     print(f"Decompressed {len(compressed)} bytes -> {len(decompressed)} bytes")
-    print(f"Saved to scratch/index.html")
+    print(f"Saved to AP_webpage_src/index.html")
