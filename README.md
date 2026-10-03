@@ -107,9 +107,12 @@ To run the code follow the following steps:
 3. Rename the Arduino folder from the repo to `epd7in3e`
 4. Open the `epd7in3e.ino` file
 5. Install following libraries from Arduino library manager:
-  5-1. Arduinojson
-  5-2. Async TCP
-  5-3. ESP Async Web Server
+  5-1. ArduinoJson (v7)
+  5-2. Async TCP (ESP32Async fork)
+  5-3. ESP Async Web Server (ESP32Async fork)
+  5-4. STM32duino ST25DV (NFC tag; optional - the firmware skips NFC writes if no tag is found)
+
+   Alternatively, open the `Arduino` folder with PlatformIO; `platformio.ini` pulls in all libraries and the ESP32-C6 board support (pioarduino fork).
 6. Click 'Upload'
 7. Connect to the Wifi AP created by the ESP32, named `ESP32_ePAPER`
 8. A captive portal shows up allowing to enter your WiFi details and details of the Docker container (e.g. http://192.168.100.10:15151)

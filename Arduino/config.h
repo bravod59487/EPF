@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // File system configuration
-// #define CONFIG_FILE "/wifi_config.json"
+#define CONFIG_FILE "/wifi_config.json"
 
 // WiFi and HTTP configuration
 #define HTTP_TIMEOUT 50000U // HTTP request timeout in ms
@@ -28,10 +28,19 @@
 
 #define SERVER_BASE_URL "http://server.ip:15001"
 #define PREFERENCES_SLEEP_TIME_KEY "refresh_rate"
+// #define PREFERENCES_DEVICE_REGISTRED_KEY "plugin"
+// #define PREFERENCES_FILENAME_KEY "filename"
 #define PREFERENCES_LAST_SLEEP_TIME "last_sleep"
 #define PREFERENCES_CONNECT_API_RETRY_COUNT "retry_count"
 #define PREFERENCES_CONNECT_WIFI_RETRY_COUNT "wifi_retry"
 
-#define CONFIG_TIMEOUT 300000U // 5 minute
+#define CONFIG_TIMEOUT 300000 // 5 minute
+
+// NFC Configuration (ST25DV)
+#define NFC_SDA_PIN 19
+#define NFC_SCL_PIN 20
+#define NFC_POWER_PIN 4              // GPIO to directly power NFC module VCC
+#define NFC_POWER_ON_DELAY_MS 50     // Delay after power on for ST25DV to stabilize
+#define NFC_PHOTO_URL_HEADER "X-Photo-Url"
 
 #endif // CONFIG_H

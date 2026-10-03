@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
+#include <WiFi.h>
+#include <WiFiClient.h>
 #include <HTTPClient.h>
 #include "epd7in3e.h"
 #include "FS.h"
@@ -12,18 +14,27 @@
 #include <Preferences.h>
 #include <WifiCaptive.h>
 #include <filesystem.h>
+#include "nfc_writer.h"
 
-/* Pin Layout Description
-DRIVER BOARD  <>  FireBeetle ESP32-C6
-BUSY          <>  18  // E-paper busy signal input
-RST           <>  14  // E-paper reset control
-DC            <>  8   // Data/Command control
-CS            <>  1   // Chip select control
-SCLK          <>  23  // SPI clock
-DIN           <>  22  // SPI data input
-GND           <>  GND // Ground
-VCC           <>  3V3 // Power supply
-SETTING       <>  2  // Configuration mode trigger pin
+/* Pin Layout Description - P1
+E-PAPER DRIVER BOARD  <>  FireBeetle ESP32-C6
+BUSY                  <>  18  // E-paper busy signal input
+RST                   <>  14  // E-paper reset control
+DC                    <>  8   // Data/Command control
+CS                    <>  1   // Chip select control
+SCLK                  <>  23  // SPI clock
+DIN                   <>  22  // SPI data input
+GND                   <>  GND // Ground
+VCC                   <>  3V3 // Power supply
+SETTING               <>  2   // Configuration mode trigger pin
+*/
+
+/* Pin Layout Description - P2
+ST25DV16 NFC/RFID TAG IC  <>  FireBeetle ESP32-C6
+VIN                       <>  3V3  // Power supply
+GND                       <>  GND  // Ground
+SCL                       <>  20   // Data/Command control
+SDA                       <>  19   // Chip select control
 */
 
 Preferences preferences;
@@ -33,6 +44,7 @@ class EpaperManager
 private:
   // SimpleWiFiManager wifiManager;
   Epd epd;
+  NfcWriter nfcWriter;
   String imageUrl = "";
 
   bool downloadImage()
@@ -52,7 +64,10 @@ private:
     String baseUrl = imageUrl;
     const char *downloadPath = "/download";
     const char *sleepPath = "/sleep";
-
+    // int downloadPos = baseUrl.lastIndexOf(downloadPath);
+    // if (downloadPos != -1) {
+    //   baseUrl = baseUrl.substring(0, downloadPos);
+    // }
     String sleepUrl = baseUrl + sleepPath;
 
     // Setup client for image download
@@ -89,9 +104,14 @@ private:
     int batteryVoltage = (plusV / 50) * 2;
     http.addHeader("batteryCap", String(batteryVoltage));
 
+    // Collect response headers for NFC photo URL
+    const char *headerKeys[] = {NFC_PHOTO_URL_HEADER};
+    http.collectHeaders(headerKeys, 1);
+
     // Download and process image
     bool success = false;
     int sleepDuration = 0;
+    String photoUrl = "";
     bool retryOnError = true; // Add retry flag
 
     while (retryOnError && !success)
@@ -104,6 +124,21 @@ private:
 
         if (httpCode == HTTP_CODE_OK)
         {
+          // Read photo URL from response header before consuming stream
+          photoUrl = http.header(NFC_PHOTO_URL_HEADER);
+          if (!photoUrl.isEmpty())
+          {
+            Serial.print(F("Photo URL from header: "));
+            Serial.println(photoUrl);
+            // Write NFC immediately so the tag is up-to-date before image processing
+            nfcWriter.writePhotoUri(photoUrl);
+            // nfcWriter.writePhotoUri("https://my.immich.app/albums/867e4d0a-8d36-4229-a0ed-ff9a3721e9f7/photos/ad80ae48-1a9d-42b0-8aae-eeeed255de5e");
+          }
+          else
+          {
+            Serial.println(F("Warning: X-Photo-Url header empty or not received"));
+          }
+
           success = processImageData(&http);
 
           // After successful image download, get sleep duration
@@ -131,7 +166,8 @@ private:
             if (sleepHttpCode == HTTP_CODE_OK)
             {
               String payload = sleepHttp.getString();
-              StaticJsonDocument<200> doc;
+              // StaticJsonDocument<200> doc;
+              JsonDocument doc;
               DeserializationError error = deserializeJson(doc, payload);
 
               if (!error)
@@ -297,6 +333,9 @@ private:
     // int sleep_interval = sleepDuration > 0 ? sleepDuration : wifiManager.getServerSleepDuration();
     int sleep_interval = sleepDuration > 0 ? sleepDuration : 86400;
 
+    // Cut NFC module power before sleep (GPIO held LOW during deep sleep)
+    nfcWriter.powerOff();
+
     // Disconnect WiFi and turn off radio
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
@@ -363,9 +402,23 @@ private:
 public:
   bool begin()
   {
-    Serial.begin(115200);
+    // Serial.begin() moved to the top of setup() so early diagnostics are not dropped
     delay(50);
+
+    // Release RTC GPIO hold from previous deep sleep so we can re-control pins
+    rtc_gpio_hold_dis(static_cast<gpio_num_t>(NFC_POWER_PIN));
+
     pinMode(CONFIG_PIN, INPUT_PULLUP);
+
+    // Initialize NFC first and write placeholder to prevent stale URL reads
+    if (!nfcWriter.begin())
+    {
+      Serial.println(F("NFC init failed, NFC writes will be skipped"));
+    }
+    else
+    {
+      nfcWriter.writePlaceholder();
+    }
 
     if (epd.Init() != 0)
     {
@@ -378,7 +431,7 @@ public:
     fs_init();
 
     // initialize preferences
-    preferences.begin("data", true);
+    preferences.begin("data", false);
 
     WiFi.mode(WIFI_STA);
 
@@ -492,6 +545,23 @@ EpaperManager epaperManager;
 
 void setup()
 {
+  // USB CDC (HWCDCSerial) must be begin()'d first; otherwise HWCDC::write() drops output because tx_ring_buf == NULL
+  Serial.begin(115200);
+  // Wait for the host to open the serial port. isCDC_Connected() arms the TX interrupt and
+  // flushes the FIFO on every call, so the loop exits as soon as a monitor attaches instead
+  // of always waiting the full SERIAL_WAIT_MS.
+  // The 10 s cap exists because PlatformIO's monitor needs ~8 s after upload to reopen the USB CDC port.
+  // With no host attached (normal battery operation) it times out and continues; behaviour is unaffected.
+  const uint32_t SERIAL_WAIT_MS = 10000;
+  for (uint32_t t0 = millis(); !Serial && (millis() - t0) < SERIAL_WAIT_MS;)
+  {
+    delay(10);
+  }
+  Serial.println();
+  Serial.print(F("=== boot: serial up after "));
+  Serial.print(millis());
+  Serial.println(F("ms ==="));
+
   // Determine wake up reason
   esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
 

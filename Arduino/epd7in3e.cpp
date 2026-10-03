@@ -178,8 +178,19 @@ void Epd::SendData(unsigned char data)
 
 void Epd::EPD_7IN3E_BusyHigh(void) // If BUSYN=0 then waiting
 {
+    // Timeout guard: with the panel unplugged, a broken signal line or a faulty panel the
+    // original loop blocks forever. delay() yields to the idle task, so the WDT never fires
+    // and the device silently hangs. A full refresh of the 7.3" Spectra E6 takes ~25-35 s,
+    // so 60 s is a safe upper bound that will not cut off a normal refresh.
+    const unsigned long BUSY_TIMEOUT_MS = 60000;
+    unsigned long start = millis();
     while (!DigitalRead(BUSY_PIN))
     {
+        if (millis() - start >= BUSY_TIMEOUT_MS)
+        {
+            Serial.println(F("[EPD] BUSY timeout after 60s - panel not responding"));
+            return;
+        }
         DelayMs(1);
     }
 }

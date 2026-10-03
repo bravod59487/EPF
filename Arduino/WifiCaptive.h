@@ -1,14 +1,17 @@
 #ifndef WiFiCaptive_h
 #define WiFiCaptive_h
 
-#include <AsyncTCP.h> //https://github.com/me-no-dev/AsyncTCP using the latest dev version from @me-no-dev
+#include <Arduino.h>
+#include <AsyncTCP.h> //https://github.com/ESP32Async/AsyncTCP using the latest dev version from @ESP32Async
 #include <DNSServer.h>
-#include <ESPAsyncWebServer.h> //https://github.com/me-no-dev/ESPAsyncWebServer using the latest dev version from @me-no-dev
+#include <ESPAsyncWebServer.h> //https://github.com/ESP32Async/ESPAsyncWebServer using the latest dev version from @ESP32Async
 #include <esp_wifi.h>          //Used for mpdu_rx_disable android workaround
+#include <WiFi.h>
 #include <AsyncJson.h>
 #include "Preferences.h"
 #include "WifiCaptivePage.h"
 #include <ArduinoJson.h>
+// #include <ArduinoLog.h>
 
 #define WIFI_SSID "ESP32_ePAPER"
 #define WIFI_PASSWORD NULL

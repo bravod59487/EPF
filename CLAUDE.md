@@ -47,7 +47,7 @@ The front end is split the same way: `templates/settings.html` is markup only, w
 
 This contract is the thing to be careful about — both sides must change together.
 
-- `GET /download` — the device sends its battery voltage in a `batteryCap` **request header** (millivolts). Response is `text/plain`: ASCII hex bytes as `"XX,XX,..."` terminated by `};`, i.e. C-array source text, not binary. The `X-Photo-Url` response header carries the Immich web URL of the chosen photo (intended for writing an NFC tag; the firmware does not read it yet).
+- `GET /download` — the device sends its battery voltage in a `batteryCap` **request header** (millivolts). Response is `text/plain`: ASCII hex bytes as `"XX,XX,..."` terminated by `};`, i.e. C-array source text, not binary. The `X-Photo-Url` response header carries the Immich web URL of the chosen photo — the firmware reads it with `collectHeaders` and writes it to the ST25DV NFC tag (`Arduino/nfc_writer.cpp`) before streaming the image.
 - `GET /sleep` — returns `{current_time, next_wakeup, sleep_duration}` where `sleep_duration` is **milliseconds**. The firmware divides by 1000 and passes it to `esp_deep_sleep`. Falls back to 24h if absent. `/download` and `/sleep` are two separate requests per wake cycle.
 - `GET /setting` (GET renders, POST saves) — the config UI; `/` redirects here. Battery percentage shown here comes from the last `/download` request's header, cached in module globals for one hour, so it reads 0% until the device has checked in.
 - `GET /log?limit=N` — the system-log card, newest first (limit clamped to 500). Events are appended as JSONL to `events.jsonl` beside `tracking.txt`, so the mount that keeps the settings keeps the history; `log_event()` never raises and is guarded by a lock, because the threaded dev server means the device and a browser can write at once. The file is trimmed to `LOG_MAX_ENTRIES` once it passes `LOG_TRIM_BYTES`. Events: `checkin` (ip, battery, asset, album, plus `mac`/`rssi` **only if the firmware sends `X-Device-Mac`/`X-Device-Rssi`** — HTTP carries no MAC and the container cannot read the LAN's ARP table), `settings_saved` (with a before/after diff), `config_reloaded`, `tracking_reset`, `notified`, `notify_bound`, `notify_unbound`, `log_cleared`, `error`, `startup`. `/sleep` deliberately writes nothing: it fires every wake-up and its answer is implied by the check-in. `POST /log/clear` empties the file.
@@ -75,7 +75,7 @@ Three palettes must stay consistent: the pure-RGB one inside `cpy.pyx:convert_im
 
 ## Firmware: build and flow
 
-Arduino IDE, board FireBeetle 2 ESP32-C6. The folder must be renamed to `epd7in3e` to match the `.ino`. Libraries: ArduinoJson, AsyncTCP, ESPAsyncWebServer. Pin map is in the comment block at the top of `epd7in3e.ino`.
+Arduino IDE, board FireBeetle 2 ESP32-C6. The folder must be renamed to `epd7in3e` to match the `.ino`. Libraries: ArduinoJson 7, AsyncTCP and ESPAsyncWebServer (ESP32Async forks), STM32duino ST25DV. `Arduino/platformio.ini` (pioarduino platform fork, `min_spiffs` partition table) is the PlatformIO alternative. Pin map is in the comment block at the top of `epd7in3e.ino`; NFC (ST25DV) uses I2C on GPIO 19/20 and is powered from GPIO 4, which is held LOW through deep sleep. The captive-portal HTML lives in `Arduino/scratch/index.html`; run `scratch/compress_html.py` to regenerate `WifiCaptivePage.h`.
 
 `setup()` runs once per wake and never returns to `loop()`:
 

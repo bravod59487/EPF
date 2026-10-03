@@ -93,6 +93,19 @@ void WifiCaptive::setUpWebserver(AsyncWebServer &server, const IPAddress &localI
 				json+= "\"rssi\":\""+rssi+"\",";
 				json+= "\"open\":"+String(network.open == WIFI_AUTH_OPEN ? "true,": "false,");
                 json+= "\"saved\":"+String(network.saved ? "true": "false");
+				// Include password for saved networks
+				if (network.saved) {
+					String pswd = "";
+					for (int j = 0; j < WIFI_MAX_SAVED_CREDS; j++) {
+						if (_savedWifis[j].ssid == network.ssid) {
+							pswd = _savedWifis[j].pswd;
+							pswd.replace("\\","\\\\");
+							pswd.replace("\"","\\\"");
+							break;
+						}
+					}
+					json+= ",\"pswd\":\""+pswd+"\"";
+				}
 				json+= "}";
 
 				size += 1;
@@ -352,6 +365,12 @@ void WifiCaptive::saveWifiCredentials(String ssid, String pass, String url)
     // Log.info("Saving wifi credentials: %s\r\n", ssid.c_str());
     Serial.println(url);
 
+    // Always update API server URL (even if WiFi credentials are unchanged)
+    Preferences dataPrefs;
+    dataPrefs.begin("data", false);
+    dataPrefs.putString("SERVER_BASE_URL", url);
+    dataPrefs.end();
+
     // Check if the credentials already exist
     for (u16_t i = 0; i < WIFI_MAX_SAVED_CREDS; i++)
     {
@@ -376,10 +395,6 @@ void WifiCaptive::saveWifiCredentials(String ssid, String pass, String url)
         preferences.putString(WIFI_PSWD_KEY(i), _savedWifis[i].pswd);
     }
     preferences.putInt(WIFI_LAST_INDEX, 0);
-    preferences.end();
-
-    preferences.begin("data", false);
-    preferences.putString("SERVER_BASE_URL", url);
     preferences.end();
 }
 
