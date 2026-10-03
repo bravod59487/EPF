@@ -8,5 +8,6 @@
 __pycache__/
 *.py[cod]
 
-# PlatformIO build output (Arduino/)
+# PlatformIO build output and generated VS Code settings (Arduino/)
 .pio/
+Arduino/.vscode/
