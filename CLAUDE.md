@@ -101,7 +101,3 @@ Deep sleep wakes on the timer or on GPIO 2 going low (`ext1`). `epd.Sleep()` bef
 ## Conventions
 
 Everything committed to this repo is written in **English** — code, comments, identifiers, commit messages, docs — because changes may be submitted upstream as merge requests. Pre-existing Traditional Chinese comments in `cpy.pyx` and `Arduino/button.h` are the original author's; leave them alone, but write new comments in English.
-
-Commit messages follow [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/): a `<type>[optional scope]: <description>` subject, with `feat`, `fix`, `docs`, `refactor`, `perf`, `test`, `build` (dependencies and build tooling) and `chore` as the usual types. Breaking changes take a `!` after the type, or a `BREAKING CHANGE:` footer.
-
-**Both subject and body stay in English here**, per the English-only rule above. The sibling repos under `_NAS_Docker\` use the same Conventional Commits format but keep Traditional Chinese descriptions and bodies — do not copy their style into this repo. The body should still explain *why* and how the change was verified.
