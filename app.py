@@ -151,6 +151,10 @@ def settings():
     config.apply(submitted)
     eventlog.record('settings_saved', ip=eventlog.client_ip(), changes=changes or None)
 
+    # A new look or album makes the prepared image stale; prepare again
+    state.clear_rendered()
+    start_preparing()
+
     return redirect(url_for('settings'))
 
 @app.route('/')
@@ -320,9 +324,15 @@ def upcoming_photo():
     """
     album = config.immich()['album']
     try:
-        if request.method == 'POST' or not state.next_photo['asset'] \
-                or state.next_photo['album'] != album:
-            immich.refresh_next_photo()
+        # Wait for a preparation already under way rather than choosing a second
+        # photo in parallel and overwriting the one it is rendering
+        with _prepare_lock:
+            needs_choice = request.method == 'POST' or not state.next_photo['asset'] \
+                or state.next_photo['album'] != album
+            if needs_choice:
+                immich.refresh_next_photo()
+        if needs_choice:
+            start_preparing()
     except immich.ImmichError as error:
         eventlog.record('error', where='next', message=error.message, ip=eventlog.client_ip())
         return _no_store(jsonify({"error": error.message})), error.status
@@ -339,9 +349,125 @@ def upcoming_photo():
         'asset_id': asset['id'],
         'link': immich.photo_link(asset['id']),
         'taken_at': immich.taken_at_text(asset),
+        # Whether the packed image is already waiting for the frame
+        'prepared': bool(state.next_photo['rendered']),
     }))
 
+# ------------------------------------------------ preparing the next photo
+
+RENDER_KEYS = ('rotation', 'display_mode', 'enhanced', 'contrast', 'strength')
+
+def render_settings():
+    """ The settings a rendered image depends on, to tell whether a prepared one is still right """
+    settings_now = config.immich()
+    return {key: settings_now[key] for key in RENDER_KEYS}
+
+def render_asset(selected):
+    """
+    Fetch, process and pack one asset for the panel.
+
+    Returns (BytesIO of C-array text, timing, fallback) where timing holds the
+    milliseconds of each step and the size of the original, and fallback is
+    why the original could not be used (None when it could).
+    """
+    timing = {}
+    clock = time.perf_counter()
+
+    def lap(name):
+        nonlocal clock
+        now = time.perf_counter()
+        timing[name] = int((now - clock) * 1000)
+        clock = now
+
+    asset_id = selected['id']
+    original = immich.fetch_original(asset_id)
+    timing['original_bytes'] = len(original)
+    lap('fetch_ms')
+    # Immich's preview stands in when the original cannot be decoded (AVIF,
+    # JPEG XL, a damaged file): it is always JPEG or WebP and still larger than
+    # the panel, and a photo beats a wake-up with nothing to show.
+    fallback = None
+    try:
+        image = imaging.open_asset(io.BytesIO(original), selected.get('originalPath'))
+    except Exception as error:
+        fallback = str(error)
+        print(f"Original of {asset_id} unreadable, using the preview: {error}")
+        try:
+            image = imaging.open_preview(io.BytesIO(immich.fetch_thumbnail(asset_id)[0]))
+        except Exception:
+            # Report why the original failed, which is the actual problem
+            raise error
+    lap('decode_ms')
+
+    settings_now = config.immich()
+    processed = imaging.scale_img_in_memory(
+        image,
+        rotation=settings_now['rotation'],
+        display_mode=settings_now['display_mode'],
+        enhanced=settings_now['enhanced'],
+        contrast=settings_now['contrast'],
+        strength=settings_now['strength'],
+    )
+    lap('process_ms')
+    c_code = imaging.pack_bmp_for_panel(processed)
+    lap('pack_ms')
+    return c_code, timing, fallback
+
+_prepare_lock = threading.Lock()
+
+def prepare_next_photo():
+    """
+    Choose the next photo if none is remembered, then render it, so /download
+    can answer from memory. Listing a large album takes around ten seconds and
+    rendering one or two more, and the frame otherwise spends all of it awake
+    with the radio on. Runs on a thread and never raises; one run at a time.
+    """
+    if not _prepare_lock.acquire(blocking=False):
+        return
+    try:
+        # A swap or a settings change while rendering makes the result stale,
+        # so go round again rather than leave nothing prepared.
+        for _ in range(3):
+            settings_now = config.immich()
+            album = settings_now['album']
+            if not settings_now['url'] or not album:
+                return
+            if not state.next_photo['asset'] or state.next_photo['album'] != album:
+                immich.refresh_next_photo()
+            asset = state.next_photo['asset']
+            if not asset or state.next_photo['rendered']:
+                return
+
+            settings_used = render_settings()
+            c_code, timing, fallback = render_asset(asset)
+            if state.next_photo['asset'] is asset and settings_used == render_settings():
+                state.next_photo['rendered'] = {
+                    'asset_id': asset['id'],
+                    'c_code': c_code.getvalue(),
+                    'settings': settings_used,
+                    'timing': timing,
+                    'preview_fallback': fallback,
+                }
+                total = sum(value for key, value in timing.items() if key.endswith('_ms'))
+                print(f"Prepared next photo {asset['id']} in {total} ms")
+                return
+    except Exception as error:
+        # Only a convenience: the next /download renders on the spot instead
+        print(f"Could not prepare the next photo: {error}")
+    finally:
+        _prepare_lock.release()
+
+def start_preparing():
+    threading.Thread(target=prepare_next_photo, daemon=True).start()
+
 # ------------------------------------------------- the contract with the frame
+
+def _int_header(name):
+    """ A numeric request header, or None when absent or malformed """
+    try:
+        return int(request.headers.get(name))
+    except (TypeError, ValueError):
+        return None
 
 @app.route('/download', methods=['GET'])
 def process_and_download():
@@ -365,44 +491,58 @@ def process_and_download():
         eventlog.record('error', where='download', message=message, ip=eventlog.client_ip())
         return jsonify({"error": message}), 500
 
+    # Named in the error events below, so a photo that cannot be decoded can be
+    # found in Immich instead of only being reported as a BytesIO object.
+    asset_id = None
+
     try:
+        # Timed per phase and reported in the check-in event: the frame stays
+        # awake, radio on, for the whole of this, so it is worth watching.
+        clock = time.perf_counter()
+        timing = {}
+
+        def lap(name):
+            nonlocal clock
+            now = time.perf_counter()
+            timing[name] = int((now - clock) * 1000)
+            clock = now
+
         # Use the photo already chosen for this wake-up when there is one, so the
         # frame gets exactly what the settings page was showing as "next".
+        rendered = None
         if state.next_photo['asset'] and state.next_photo['album'] == album:
             selected = state.next_photo['asset']
             albumid = state.next_photo['album_id']
+            rendered = state.next_photo['rendered']
         else:
             albumid = immich.resolve_album_id()
             selected = immich.select_asset(immich.list_album_assets(albumid))
 
-        # Handed over, so it is no longer "next"; the settings page asks for a
-        # fresh one the next time it loads.
+        # Handed over, so it is no longer "next"
         state.clear_next_photo()
 
         asset_id = selected['id']
         tracking.mark_shown(asset_id)
+        lap('select_ms')
 
-        image = imaging.open_asset(io.BytesIO(immich.fetch_original(asset_id)),
-                                   selected.get('originalPath'))
-
-        settings_now = config.immich()
-        processed = imaging.scale_img_in_memory(
-            image,
-            rotation=settings_now['rotation'],
-            display_mode=settings_now['display_mode'],
-            enhanced=settings_now['enhanced'],
-            contrast=settings_now['contrast'],
-            strength=settings_now['strength'],
-        )
-
-        c_code = imaging.pack_bmp_for_panel(processed)
+        # Prepared on a thread after the previous hand-over; good to send
+        # unless the picture settings have changed since it was rendered.
+        if rendered and rendered['asset_id'] == asset_id \
+                and rendered['settings'] == render_settings():
+            c_code = io.BytesIO(rendered['c_code'])
+            fallback = rendered.get('preview_fallback')
+            timing['prerendered'] = True
+        else:
+            c_code, render_timing, fallback = render_asset(selected)
+            timing.update(render_timing)
+            timing['prerendered'] = False
 
         state.last_photo.update({'asset_id': asset_id, 'shown_at': datetime.now(),
                                  'taken_at': immich.taken_at_text(selected)})
 
         response = send_file(c_code, mimetype='text/plain', as_attachment=True,
                              download_name=f"image_{asset_id}.c")
-        # Deep link for writing an NFC tag; the firmware does not read it yet
+        # Deep link the firmware writes to the ST25DV NFC tag (Arduino/nfc_writer.cpp)
         response.headers['X-Photo-Url'] = \
             f"https://my.immich.app/albums/{albumid}/photos/{asset_id}"
 
@@ -413,20 +553,32 @@ def process_and_download():
                         battery_pct=battery.percentage(reported_mv) if reported_mv else None,
                         mac=request.headers.get('X-Device-Mac'),
                         rssi=request.headers.get('X-Device-Rssi'),
-                        agent=request.headers.get('User-Agent'))
+                        agent=request.headers.get('User-Agent'),
+                        # Sent by firmware from October 2026 on: milliseconds
+                        # awake before this request, and what woke the frame
+                        uptime_ms=_int_header('X-Uptime-Ms'),
+                        wake=request.headers.get('X-Wake'),
+                        timing=timing,
+                        # Why the photo came from Immich's preview, if it did
+                        preview_fallback=fallback)
 
         if reported_mv:
             # Sent on a thread: the frame gives up after 50 seconds and must not
             # wait on Telegram or LINE
             notify.check_battery(battery.percentage(reported_mv), reported_mv)
 
+        # Choose and render the following photo now, while the frame sleeps
+        start_preparing()
+
         return response
 
     except immich.ImmichError as error:
-        eventlog.record('error', where='download', message=error.message, ip=eventlog.client_ip())
+        eventlog.record('error', where='download', message=error.message,
+                        asset_id=asset_id, ip=eventlog.client_ip())
         return jsonify({"error": error.message}), error.status
     except Exception as error:
-        eventlog.record('error', where='download', message=str(error), ip=eventlog.client_ip())
+        eventlog.record('error', where='download', message=str(error),
+                        asset_id=asset_id, ip=eventlog.client_ip())
         return jsonify({"error": str(error)}), 500
 
 @app.route('/sleep', methods=['GET'])
@@ -526,6 +678,7 @@ def main():
     try:
         config.apply(config.read_file())
         eventlog.record('startup')
+        start_preparing()
 
         threading.Thread(target=run_daily_ntp_sync, daemon=True).start()
 

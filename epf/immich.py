@@ -6,6 +6,7 @@ settings page takes effect on the next request without a restart.
 """
 import os
 import random
+import time
 from datetime import datetime
 
 import requests
@@ -30,6 +31,33 @@ class ImmichError(Exception):
         self.message = message
         self.status = status
 
+# Immich on the LAN answers in well under a second; these only matter when it
+# is down. Without them a request to an Immich that accepts the connection but
+# never answers would hang the handler, and the frame would give up at its own
+# 50-second limit without ever learning why. They have to stay inside that
+# limit so the device gets a status code it can act on.
+CONNECT_TIMEOUT = 5
+READ_TIMEOUT = 20
+# The original can be a RAW file of tens of megabytes. The read timeout only
+# covers each chunk, so a trickling connection could outlast the frame: the
+# whole download also gets a deadline.
+DOWNLOAD_TIMEOUT = (CONNECT_TIMEOUT, 15)
+DOWNLOAD_DEADLINE = 25
+
+def _call(method, url, **kwargs):
+    """
+    requests.request() with the API key and timeouts, reporting a transport
+    failure as an ImmichError the routes can return: 504 when Immich did not
+    answer in time, 502 when it could not be reached at all.
+    """
+    kwargs.setdefault('timeout', (CONNECT_TIMEOUT, READ_TIMEOUT))
+    try:
+        return requests.request(method, url, headers=headers, **kwargs)
+    except requests.Timeout as error:
+        raise ImmichError(f"Immich did not answer in time: {error}", 504)
+    except requests.RequestException as error:
+        raise ImmichError(f"Could not reach Immich: {error}", 502)
+
 def base_url():
     return config.immich()['url']
 
@@ -42,9 +70,9 @@ def photo_link(asset_id):
 
 def resolve_album_id():
     """ Look up the configured album, raising ImmichError if it cannot be used """
-    response = requests.get(f"{base_url()}/api/albums", headers=headers)
+    response = _call('GET', f"{base_url()}/api/albums")
     if response.status_code != 200:
-        raise ImmichError("Failed to fetch albums")
+        raise ImmichError(f"Failed to fetch albums (Immich returned {response.status_code})", 502)
 
     wanted = album_name()
     albumid = next((item['id'] for item in response.json()
@@ -59,23 +87,29 @@ def list_album_assets(albumid):
 
     Immich v3 breaking change: GET /api/albums/{id} no longer returns the
     'assets' property, so this goes through the paginated search endpoint.
+
+    Videos are left out: an album may hold them, and handing one to the image
+    pipeline only fails later, where PIL can say no more than "cannot identify
+    image file".
     """
     assets = []
     page = 1
     while True:
         search_body = {
             "albumIds": [albumid],
+            "type": "IMAGE",
             "size": 1000,
             "page": page,
             "withExif": True,
         }
-        response = requests.post(f"{base_url()}/api/search/metadata",
-                                 headers=headers, json=search_body)
+        response = _call('POST', f"{base_url()}/api/search/metadata", json=search_body)
         if response.status_code != 200:
-            raise ImmichError("Failed to fetch album details")
+            raise ImmichError(f"Failed to fetch album details (Immich returned {response.status_code})", 502)
 
         result = response.json().get('assets', {})
-        assets.extend(result.get('items', []))
+        # Filtered again here in case an older server ignores the type above
+        assets.extend(item for item in result.get('items', [])
+                      if item.get('type', 'IMAGE') == 'IMAGE')
 
         next_page = result.get('nextPage')
         if not next_page:
@@ -88,11 +122,23 @@ def list_album_assets(albumid):
 
 def fetch_original(asset_id):
     """ The asset's original bytes, for the image pipeline """
-    response = requests.get(f"{base_url()}/api/assets/{asset_id}/original",
-                            headers=headers, stream=True)
-    if response.status_code != 200:
-        raise ImmichError("Failed to download image")
-    return response.content
+    deadline = time.monotonic() + DOWNLOAD_DEADLINE
+    response = _call('GET', f"{base_url()}/api/assets/{asset_id}/original",
+                     timeout=DOWNLOAD_TIMEOUT, stream=True)
+    with response:
+        if response.status_code != 200:
+            raise ImmichError(f"Failed to download image (Immich returned {response.status_code})", 502)
+        chunks = []
+        try:
+            # Small chunks: iter_content only returns once a chunk is full, so the
+            # deadline is checked at most one chunk late on a slow connection
+            for chunk in response.iter_content(chunk_size=8 * 1024):
+                chunks.append(chunk)
+                if time.monotonic() > deadline:
+                    raise ImmichError("Downloading the original took too long", 504)
+        except requests.RequestException as error:
+            raise ImmichError(f"Download from Immich failed: {error}", 502)
+    return b''.join(chunks)
 
 def fetch_thumbnail(asset_id):
     """
@@ -190,5 +236,6 @@ def refresh_next_photo():
     albumid = resolve_album_id()
     asset = select_asset(list_album_assets(albumid))
     state.next_photo.update({'asset': asset, 'album': album_name(),
-                             'album_id': albumid, 'chosen_at': datetime.now()})
+                             'album_id': albumid, 'chosen_at': datetime.now(),
+                             'rendered': None})
     return asset

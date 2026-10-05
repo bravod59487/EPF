@@ -61,7 +61,10 @@ int EpdIf::IfInit(void)
     pinMode(CS_PIN, OUTPUT);
     pinMode(RST_PIN, OUTPUT);
     pinMode(DC_PIN, OUTPUT);
-    pinMode(BUSY_PIN, INPUT);
+    // BUSY is an active-low signal driven by the panel. The internal pull-up makes
+    // "not connected" read as "not busy", so a floating input reading LOW cannot
+    // block EPD_7IN3E_BusyHigh() forever.
+    pinMode(BUSY_PIN, INPUT_PULLUP);
     SPI.begin();
     SPI.beginTransaction(SPISettings(4000000, MSBFIRST, SPI_MODE0));
 

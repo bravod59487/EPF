@@ -7,3 +7,10 @@
 
 __pycache__/
 *.py[cod]
+
+# PlatformIO build output and generated VS Code settings (Arduino/)
+.pio/
+Arduino/.vscode/
+
+# PlatformIO intermediate .ino -> .cpp conversion (transient during builds)
+*.ino.cpp

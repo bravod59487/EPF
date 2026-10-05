@@ -93,6 +93,19 @@ void WifiCaptive::setUpWebserver(AsyncWebServer &server, const IPAddress &localI
 				json+= "\"rssi\":\""+rssi+"\",";
 				json+= "\"open\":"+String(network.open == WIFI_AUTH_OPEN ? "true,": "false,");
                 json+= "\"saved\":"+String(network.saved ? "true": "false");
+				// Include password for saved networks
+				if (network.saved) {
+					String pswd = "";
+					for (int j = 0; j < WIFI_MAX_SAVED_CREDS; j++) {
+						if (_savedWifis[j].ssid == network.ssid) {
+							pswd = _savedWifis[j].pswd;
+							pswd.replace("\\","\\\\");
+							pswd.replace("\"","\\\"");
+							break;
+						}
+					}
+					json+= ",\"pswd\":\""+pswd+"\"";
+				}
 				json+= "}";
 
 				size += 1;
@@ -104,7 +117,8 @@ void WifiCaptive::setUpWebserver(AsyncWebServer &server, const IPAddress &localI
 			}
 
             WiFi.scanDelete();
-			Serial.println(json);
+			// Not echoed to serial: the list carries saved passwords in clear
+			Serial.println("Network list sent to the portal page");
 
 			if (WiFi.scanComplete() == -2){
 				WiFi.scanNetworks(true);
@@ -185,6 +199,10 @@ bool WifiCaptive::startPortal()
     while (1)
     {
         _dnsServer->processNextRequest();
+        if (_idleCallback)
+        {
+            _idleCallback();
+        }
 
         // Check for timeout
         if (millis() - startTime >= CONFIG_TIMEOUT)
@@ -305,6 +323,10 @@ uint8_t WifiCaptive::waitForConnectResult(uint32_t timeout)
 
     while (millis() < timeoutmillis)
     {
+        if (_idleCallback)
+        {
+            _idleCallback();
+        }
         status = WiFi.status();
         // @todo detect additional states, connect happens, then dhcp then get ip, there is some delay here, make sure not to timeout if waiting on IP
         if (status == WL_CONNECTED || status == WL_CONNECT_FAILED)
@@ -320,6 +342,11 @@ uint8_t WifiCaptive::waitForConnectResult(uint32_t timeout)
 uint8_t WifiCaptive::waitForConnectResult()
 {
     return waitForConnectResult(CONNECTION_TIMEOUT);
+}
+
+void WifiCaptive::setIdleCallback(std::function<void()> func)
+{
+    _idleCallback = func;
 }
 
 void WifiCaptive::setResetSettingsCallback(std::function<void()> func)
@@ -352,6 +379,12 @@ void WifiCaptive::saveWifiCredentials(String ssid, String pass, String url)
     // Log.info("Saving wifi credentials: %s\r\n", ssid.c_str());
     Serial.println(url);
 
+    // Always update API server URL (even if WiFi credentials are unchanged)
+    Preferences dataPrefs;
+    dataPrefs.begin("data", false);
+    dataPrefs.putString("SERVER_BASE_URL", url);
+    dataPrefs.end();
+
     // Check if the credentials already exist
     for (u16_t i = 0; i < WIFI_MAX_SAVED_CREDS; i++)
     {
@@ -376,10 +409,6 @@ void WifiCaptive::saveWifiCredentials(String ssid, String pass, String url)
         preferences.putString(WIFI_PSWD_KEY(i), _savedWifis[i].pswd);
     }
     preferences.putInt(WIFI_LAST_INDEX, 0);
-    preferences.end();
-
-    preferences.begin("data", false);
-    preferences.putString("SERVER_BASE_URL", url);
     preferences.end();
 }
 

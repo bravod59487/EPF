@@ -1,14 +1,18 @@
 #ifndef WiFiCaptive_h
 #define WiFiCaptive_h
 
-#include <AsyncTCP.h> //https://github.com/me-no-dev/AsyncTCP using the latest dev version from @me-no-dev
+#include <Arduino.h>
+#include <AsyncTCP.h> //https://github.com/ESP32Async/AsyncTCP using the latest dev version from @ESP32Async
 #include <DNSServer.h>
-#include <ESPAsyncWebServer.h> //https://github.com/me-no-dev/ESPAsyncWebServer using the latest dev version from @me-no-dev
+#include <ESPAsyncWebServer.h> //https://github.com/ESP32Async/ESPAsyncWebServer using the latest dev version from @ESP32Async
 #include <esp_wifi.h>          //Used for mpdu_rx_disable android workaround
+#include <WiFi.h>
 #include <AsyncJson.h>
 #include "Preferences.h"
 #include "WifiCaptivePage.h"
 #include <ArduinoJson.h>
+#include <functional>
+// #include <ArduinoLog.h>
 
 #define WIFI_SSID "ESP32_ePAPER"
 #define WIFI_PASSWORD NULL
@@ -56,6 +60,9 @@ private:
     String _api_server = "";
 
     std::function<void()> _resetcallback;
+    // Called on every pass of the portal loop and of the connection wait, so
+    // the sketch can keep answering the USB installer (improv_serial.*)
+    std::function<void()> _idleCallback;
 
     WifiCredentials _savedWifis[WIFI_MAX_SAVED_CREDS];
 
@@ -92,6 +99,8 @@ public:
     /// @brief Connects to the saved SSID with the best signal strength
     /// @return True if successfully connected to saved SSID, false otherwise.
     bool autoConnect();
+    /// @brief Called on every pass of the portal loop and connection wait
+    void setIdleCallback(std::function<void()> func);
 };
 
 extern WifiCaptive WifiCaptivePortal;
